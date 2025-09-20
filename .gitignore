@@ -106,9 +106,30 @@ unlinked_spec.ds
 
 # Coverage
 coverage/
+*.lcov
 
 # Symbols
 app.*.symbols
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Generated files
+*.g.dart
+*.freezed.dart
+*.config.dart
+*.mocks.dart
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Test
+test/reports/
+test/.test_coverage.dart
 
 # Exceptions to above rules.
 !**/ios/**/default.mode1v3
