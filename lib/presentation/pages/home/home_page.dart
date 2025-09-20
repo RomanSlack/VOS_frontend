@@ -5,14 +5,15 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Home'),
-      ),
-      body: const Center(
+    return const Scaffold(
+      body: Center(
         child: Text(
-          'Welcome to VOS App!',
-          style: TextStyle(fontSize: 24),
+          'VOS Home Screen',
+          style: TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.w500,
+            color: Colors.white,
+          ),
         ),
       ),
     );
