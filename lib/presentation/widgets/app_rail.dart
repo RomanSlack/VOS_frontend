@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:vos_app/presentation/widgets/circle_icon.dart';
 
 class AppRail extends StatelessWidget {
   const AppRail({super.key});
 
   @override
   Widget build(BuildContext context) {
+    const double iconSize = 48;
+    const double iconSpacing = 12;
+
     return Container(
       width: 80,
       margin: const EdgeInsets.all(16),
@@ -25,7 +30,6 @@ class AppRail extends StatelessWidget {
             spreadRadius: 0,
           ),
         ],
-        // Simple uniform border for bevel effect
         border: Border.all(
           color: Colors.white.withOpacity(0.1),
           width: 1,
@@ -34,25 +38,92 @@ class AppRail extends StatelessWidget {
       child: Column(
         children: [
           const SizedBox(height: 20),
-          // Add app icons here later
-          Container(
-            width: 48,
-            height: 48,
-            margin: const EdgeInsets.symmetric(vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.2),
-                width: 1,
-              ),
-            ),
-            child: Icon(
-              Icons.apps,
-              color: Colors.white.withOpacity(0.8),
-              size: 24,
-            ),
+          // Main app icons
+          CircleIcon(
+            icon: Icons.phone_outlined,
+            size: iconSize,
+            useFontAwesome: false,
+            onPressed: () {},
           ),
+          const SizedBox(height: iconSpacing),
+          CircleIcon(
+            icon: Icons.calendar_today_outlined,
+            size: iconSize,
+            useFontAwesome: false,
+            onPressed: () {},
+          ),
+          const SizedBox(height: iconSpacing),
+          CircleIcon(
+            icon: Icons.check_circle_outline,
+            size: iconSize,
+            useFontAwesome: false,
+            onPressed: () {},
+          ),
+          const SizedBox(height: iconSpacing),
+          CircleIcon(
+            icon: Icons.description_outlined,
+            size: iconSize,
+            useFontAwesome: false,
+            onPressed: () {},
+          ),
+          const SizedBox(height: iconSpacing),
+          CircleIcon(
+            icon: Icons.language_outlined,
+            size: iconSize,
+            useFontAwesome: false,
+            onPressed: () {},
+          ),
+          const SizedBox(height: iconSpacing),
+          CircleIcon(
+            icon: Icons.bar_chart_outlined,
+            size: iconSize,
+            useFontAwesome: false,
+            onPressed: () {},
+          ),
+          const SizedBox(height: iconSpacing),
+          CircleIcon(
+            icon: Icons.shopping_cart_outlined,
+            size: iconSize,
+            useFontAwesome: false,
+            onPressed: () {},
+          ),
+          const SizedBox(height: iconSpacing),
+          CircleIcon(
+            icon: Icons.chat_bubble_outline,
+            size: iconSize,
+            useFontAwesome: false,
+            onPressed: () {},
+          ),
+          const SizedBox(height: iconSpacing),
+          CircleIcon(
+            icon: Icons.notifications_outlined,
+            size: iconSize,
+            useFontAwesome: false,
+            onPressed: () {},
+          ),
+
+          // Double spacing before plus icon
+          const SizedBox(height: iconSpacing * 4),
+          CircleIcon(
+            icon: Icons.add_outlined,
+            size: iconSize,
+            useFontAwesome: false,
+            onPressed: () {},
+          ),
+
+          // Spacer to push user icon to bottom
+          const Spacer(),
+
+          // User icon at bottom with special styling
+          CircleIcon(
+            icon: Icons.person_outline,
+            size: iconSize,
+            useFontAwesome: false,
+            backgroundColor: const Color(0xFF303030),
+            borderColor: const Color(0xFF212121),
+            onPressed: () {},
+          ),
+          const SizedBox(height: 20),
         ],
       ),
     );

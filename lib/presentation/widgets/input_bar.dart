@@ -64,6 +64,7 @@ class InputBar extends StatelessWidget {
             CircleIcon(
               icon: Icons.mic_none_outlined,
               size: 40,
+              useFontAwesome: false,
               onPressed: () {
                 // Handle microphone tap
               },
@@ -72,6 +73,7 @@ class InputBar extends StatelessWidget {
             CircleIcon(
               icon: Icons.graphic_eq_outlined,
               size: 40,
+              useFontAwesome: false,
               onPressed: () {
                 // Handle waveform tap
               },
