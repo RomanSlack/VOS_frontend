@@ -291,3 +291,15 @@ After creating/fixing components, inform the user you're ready for their testing
 - **Location**: `lib/presentation/widgets/workspace.dart`
 - **Purpose**: Grid background area to the right of AppRail
 - **Features**: `#2F2F2F` grid with edge fade effects, 30 grids wide, responsive height
+
+### VosModal Component
+- **Location**: `lib/presentation/widgets/vos_modal.dart`
+- **Purpose**: Reusable modal windows for apps within workspace
+- **Features**:
+  - Draggable title bar with app title
+  - Window controls: minimize, fullscreen, close, app icon
+  - Resizable from bottom-right corner with visual handle
+  - Three states: normal, minimized, fullscreen
+  - VOS design system styling with bevels and shadows
+  - Workspace boundary constraints
+  - Production-grade gesture handling
