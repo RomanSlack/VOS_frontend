@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:vos_app/presentation/widgets/circle_icon.dart';
 
 class InputBar extends StatelessWidget {
   const InputBar({super.key});
@@ -33,28 +35,48 @@ class InputBar extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Center(
-          child: TextField(
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-            ),
-            decoration: const InputDecoration(
-              hintText: 'Ask anything',
-              hintStyle: TextStyle(
-                color: Color(0xFF757575),
-                fontSize: 16,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            const Expanded(
+              child: TextField(
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Ask anything',
+                  hintStyle: TextStyle(
+                    color: Color(0xFF757575),
+                    fontSize: 16,
+                  ),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  filled: false, // Ensure no fill color
+                  fillColor: Colors.transparent, // Explicitly transparent
+                  contentPadding: EdgeInsets.only(left: 8), // Small left padding
+                ),
+                cursorColor: Colors.white,
               ),
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-              filled: false, // Ensure no fill color
-              fillColor: Colors.transparent, // Explicitly transparent
-              contentPadding: EdgeInsets.zero, // Remove default padding
             ),
-            cursorColor: Colors.white.withOpacity(0.8),
-          ),
+            const SizedBox(width: 12),
+            CircleIcon(
+              icon: Icons.mic_none_outlined,
+              size: 40,
+              onPressed: () {
+                // Handle microphone tap
+              },
+            ),
+            const SizedBox(width: 8),
+            CircleIcon(
+              icon: Icons.graphic_eq_outlined,
+              size: 40,
+              onPressed: () {
+                // Handle waveform tap
+              },
+            ),
+          ],
         ),
       ),
     );
