@@ -1,199 +1,146 @@
-# VOS App
+# VOS Frontend
 
-A production-ready Flutter application with clean architecture, state management, and CI/CD pipeline.
+[![Flutter](https://img.shields.io/badge/Flutter-3.0+-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
+[![Dart](https://img.shields.io/badge/Dart-3.0+-0175C2?style=for-the-badge&logo=dart&logoColor=white)](https://dart.dev)
+[![AI Powered](https://img.shields.io/badge/AI-Powered-FF6B6B?style=for-the-badge&logo=openai&logoColor=white)](https://openai.com)
+[![Built with Claude Code](https://img.shields.io/badge/Built%20with-Claude%20Code-8B5CF6?style=for-the-badge&logo=anthropic&logoColor=white)](https://claude.ai/code)
 
-## Features
+A modern **Virtual Operating System** interface built with Flutter, featuring a sleek dark theme, AI-powered workspace, and elegant modal window management.
 
-- Clean Architecture pattern
-- BLoC state management
-- Dependency injection with GetIt
-- Environment configuration (dev/staging/production)
-- Comprehensive testing setup
-- CI/CD with GitHub Actions
-- Responsive design with Flutter ScreenUtil
-- Theme support (Light/Dark)
-- Internationalization ready
+![VOS Frontend](readme_images/vos_frontend_intro.png)
 
-## Getting Started
+## 🌟 What is VOS?
+
+VOS (Virtual Operating System) is a cutting-edge Flutter web application that simulates a modern operating system interface within your browser. It features:
+
+- **🎨 Dark Modern Design** - Elegant UI with subtle bevels, shadows, and VOS design system
+- **📱 Modal App Management** - Up to 4 concurrent apps with drag, resize, minimize, and fullscreen
+- **🎯 Smart App Rail** - Interactive launcher with visual state indicators
+- **⚡ High Performance** - Optimized animations and efficient state management
+- **🖥️ Responsive Workspace** - Grid-based workspace with smooth fade effects
+
+## 🚀 Quick Start
 
 ### Prerequisites
+- Flutter SDK 3.0+
+- Modern web browser (Firefox recommended for best performance)
 
-- Flutter SDK (3.0.0 or higher)
-- Dart SDK (3.0.0 or higher)
-- Android Studio / Xcode (for mobile development)
-- Git
+### Installation & Launch
 
-### Installation
-
-1. Clone the repository:
+1. **Clone the repository:**
 ```bash
-git clone https://github.com/yourusername/vos_app.git
-cd vos_app
+git clone https://github.com/yourusername/VOS_frontend.git
+cd VOS_frontend
 ```
 
-2. Install dependencies:
+2. **Install dependencies:**
 ```bash
 flutter pub get
 ```
 
-3. Run code generation:
+3. **🎯 Launch VOS (Recommended):**
 ```bash
-flutter pub run build_runner build --delete-conflicting-outputs
+flutter run -d web-server --web-port=8080
 ```
 
-4. Set up environment files:
-```bash
-cp .env.example .env.development
-cp .env.example .env.staging
-cp .env.example .env.production
-```
+4. **Open in your browser:**
+Navigate to **http://localhost:8080** in Firefox or Chrome
 
-### Running the App
+> **💡 Pro Tip:** Use Firefox for optimal performance, or try `--profile` mode for faster Chrome experience.
 
-#### Development
-```bash
-flutter run --dart-define=ENVIRONMENT=development
+## 🏗️ Architecture & Components
 
-flutter run -d chrome --dart-define=ENVIRONMENT=development
-```
+### Core Components
 
-#### Staging
-```bash
-flutter run --dart-define=ENVIRONMENT=staging
-```
+- **🎛️ AppRail** - Left navigation with 9 app launchers (Phone, Calendar, Tasks, Notes, Browser, Analytics, Shop, Chat, Notifications)
+- **🖼️ VosModal** - Draggable, resizable modal windows with window controls
+- **🌐 Workspace** - Grid background with edge fade effects
+- **🔔 Smart Notifications** - Elegant 4-modal limit warnings
+- **⚡ Modal Manager** - Production-grade state management system
 
-#### Production
-```bash
-flutter run --release --dart-define=ENVIRONMENT=production
-```
+### Design System
 
-## Project Structure
+- **Colors**: Dark theme (`#212121` background, `#303030` surfaces, `#EDEDED` text)
+- **Typography**: Clean, consistent text hierarchy
+- **Shadows**: Dual-layer shadow system for depth
+- **Icons**: Material Design outlined icons with circular backgrounds
+- **Animations**: Smooth 150ms transitions with proper easing
 
+## 🎮 Features
+
+### ✨ Modal Window System
+- **4 Concurrent Apps** - Maximum productivity without clutter
+- **Drag & Drop** - Smooth repositioning within workspace bounds
+- **Resize Controls** - Bottom-right corner resize handles
+- **Window States** - Normal, minimized, fullscreen modes
+- **Smart Positioning** - Auto-cascading placement for new windows
+
+### 🎯 App Management
+- **Visual Indicators** - Green dots (open), orange pulsing dots (minimized)
+- **One-Click Launch** - Instant app opening from rail
+- **State Persistence** - Remembers window positions and states
+- **Limit Protection** - Elegant notifications prevent system overload
+
+### 🎨 Performance Optimizations
+- **Efficient Rebuilds** - Strategic widget isolation and caching
+- **Controlled Animations** - Managed animation lifecycles
+- **Smart State Management** - Change detection and minimal notifications
+- **Memory Management** - Proper disposal and cleanup
+
+## 🛠️ Development
+
+### Project Structure
 ```
 lib/
-├── app.dart                # Main app widget
-├── main.dart              # Entry point
-├── core/                  # Core functionality
-│   ├── constants/         # App constants
-│   ├── di/               # Dependency injection
-│   ├── errors/           # Error handling
-│   ├── extensions/       # Dart extensions
-│   ├── router/           # App routing
-│   ├── themes/           # App themes
-│   ├── utils/            # Utilities
-│   └── widgets/          # Common widgets
-├── data/                  # Data layer
-│   ├── datasources/      # Remote/Local data sources
-│   ├── models/           # Data models
-│   └── repositories/     # Repository implementations
-├── domain/               # Domain layer
-│   ├── entities/         # Business entities
-│   ├── repositories/     # Repository interfaces
-│   └── usecases/        # Business logic
-└── presentation/         # Presentation layer
-    ├── blocs/           # BLoC state management
-    ├── pages/           # App pages/screens
-    └── widgets/         # Page-specific widgets
+├── core/
+│   ├── modal_manager.dart     # State management for modals
+│   └── themes/               # VOS design system
+├── presentation/
+│   ├── widgets/
+│   │   ├── app_rail.dart     # Left navigation rail
+│   │   ├── vos_modal.dart    # Modal window component
+│   │   ├── workspace.dart    # Grid background workspace
+│   │   └── app_icon.dart     # Enhanced app launcher icons
+│   └── pages/
+│       └── home/             # Main application layout
 ```
 
-## Testing
+### Key Technologies
+- **Flutter Web** - Cross-platform UI framework
+- **Custom State Management** - Optimized ChangeNotifier pattern
+- **Custom Painting** - Grid backgrounds and resize handles
+- **Gesture Detection** - Advanced drag, resize, and hover handling
 
-### Run all tests
+## 🧪 Testing & Performance
+
+### Launch Options
 ```bash
-flutter test
+# Development (slower but with hot reload)
+flutter run -d web-server --web-port=8080
+
+# Profile mode (faster performance)
+flutter run -d web-server --web-port=8080 --profile
+
+# Different renderers
+flutter run -d chrome --dart-define=FLUTTER_WEB_USE_SKIA=true   # CanvasKit
+flutter run -d chrome --dart-define=FLUTTER_WEB_USE_SKIA=false  # HTML
 ```
 
-### Run tests with coverage
-```bash
-flutter test --coverage
-```
+### Performance Tips
+- **Use Firefox** for best Flutter web performance
+- **Close browser DevTools** during testing
+- **Try Profile Mode** for production-like performance
+- **Disable browser extensions** that might interfere
 
-### Generate coverage report
-```bash
-genhtml coverage/lcov.info -o coverage/html
-open coverage/html/index.html
-```
+## 📱 Browser Compatibility
 
-## Building
+| Browser | Performance | Features | Recommended |
+|---------|-------------|----------|-------------|
+| Firefox | ⭐⭐⭐⭐⭐ | Full | ✅ Yes |
+| Chrome | ⭐⭐⭐ | Full | ⚠️ Use --profile |
+| Safari | ⭐⭐⭐ | Full | ✅ Good |
+| Edge | ⭐⭐⭐⭐ | Full | ✅ Good |
 
-### Android
+---
 
-#### APK
-```bash
-flutter build apk --release
-```
-
-#### App Bundle
-```bash
-flutter build appbundle --release
-```
-
-### iOS
-```bash
-flutter build ios --release
-```
-
-### Web
-```bash
-flutter build web --release
-```
-
-## Code Generation
-
-This project uses code generation for:
-- JSON serialization
-- Dependency injection
-- API client generation
-
-Run code generation:
-```bash
-flutter pub run build_runner build --delete-conflicting-outputs
-```
-
-Watch for changes:
-```bash
-flutter pub run build_runner watch --delete-conflicting-outputs
-```
-
-## Linting & Formatting
-
-### Analyze code
-```bash
-flutter analyze
-```
-
-### Format code
-```bash
-dart format .
-```
-
-### Check formatting
-```bash
-dart format --set-exit-if-changed .
-```
-
-## CI/CD
-
-The project includes GitHub Actions workflows for:
-
-- **CI Pipeline**: Runs on push and PR to main/develop branches
-  - Code analysis
-  - Tests
-  - Build for Android, iOS, and Web
-
-- **CD Pipeline**: Runs on version tags (v*)
-  - Deploys to Play Store (configure credentials)
-  - Deploys to App Store (configure credentials)
-  - Deploys to web hosting
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details
+**Built with Flutter** | **Experience the future of virtual operating systems**

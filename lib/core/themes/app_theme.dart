@@ -28,9 +28,12 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
+      scaffoldBackgroundColor: const Color(0xFF212121),
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.primary,
         brightness: Brightness.dark,
+        surface: const Color(0xFF212121),
+        background: const Color(0xFF212121),
       ),
       textTheme: _getTextTheme(Brightness.dark),
       appBarTheme: _getAppBarTheme(Brightness.dark),
