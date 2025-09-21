@@ -40,12 +40,35 @@ class VosModalManager extends ChangeNotifier {
   final Map<String, ModalInstance> _minimizedModals = {};
   bool _showLimitNotification = false;
 
-  // Getters
-  List<ModalInstance> get openModals => _openModals.values.toList();
-  List<ModalInstance> get minimizedModals => _minimizedModals.values.toList();
+  // Cache for performance
+  List<ModalInstance>? _openModalsCache;
+  List<ModalInstance>? _minimizedModalsCache;
+  bool _cacheValid = false;
+
+  // Getters with caching
+  List<ModalInstance> get openModals {
+    if (!_cacheValid || _openModalsCache == null) {
+      _openModalsCache = _openModals.values.toList();
+    }
+    return _openModalsCache!;
+  }
+
+  List<ModalInstance> get minimizedModals {
+    if (!_cacheValid || _minimizedModalsCache == null) {
+      _minimizedModalsCache = _minimizedModals.values.toList();
+    }
+    return _minimizedModalsCache!;
+  }
+
   bool get showLimitNotification => _showLimitNotification;
   int get openModalCount => _openModals.length + _minimizedModals.length;
   bool get canOpenMore => openModalCount < maxModals;
+
+  void _invalidateCache() {
+    _cacheValid = false;
+    _openModalsCache = null;
+    _minimizedModalsCache = null;
+  }
 
   // App definitions
   static const List<AppDefinition> apps = [
@@ -121,24 +144,28 @@ class VosModalManager extends ChangeNotifier {
       final instance = _minimizedModals.remove(appId)!;
       instance.state = ModalState.normal;
       _openModals[appId] = instance;
+      _invalidateCache();
       notifyListeners();
       return;
     }
 
     if (_openModals.containsKey(appId)) {
-      // Modal already open, just notify to bring to front
-      notifyListeners();
+      // Modal already open, no need to notify
       return;
     }
 
     if (!canOpenMore) {
-      _showLimitNotification = true;
-      notifyListeners();
-      // Auto-hide notification after 3 seconds
-      Future.delayed(const Duration(seconds: 3), () {
-        _showLimitNotification = false;
+      if (!_showLimitNotification) {
+        _showLimitNotification = true;
         notifyListeners();
-      });
+        // Auto-hide notification after 3 seconds
+        Future.delayed(const Duration(seconds: 3), () {
+          if (_showLimitNotification) {
+            _showLimitNotification = false;
+            notifyListeners();
+          }
+        });
+      }
       return;
     }
 
@@ -160,13 +187,18 @@ class VosModalManager extends ChangeNotifier {
       openedAt: DateTime.now(),
     );
 
+    _invalidateCache();
     notifyListeners();
   }
 
   void closeModal(String appId) {
-    _openModals.remove(appId);
-    _minimizedModals.remove(appId);
-    notifyListeners();
+    final hadOpen = _openModals.remove(appId) != null;
+    final hadMinimized = _minimizedModals.remove(appId) != null;
+
+    if (hadOpen || hadMinimized) {
+      _invalidateCache();
+      notifyListeners();
+    }
   }
 
   void minimizeModal(String appId) {
@@ -174,13 +206,16 @@ class VosModalManager extends ChangeNotifier {
     if (instance != null) {
       instance.state = ModalState.minimized;
       _minimizedModals[appId] = instance;
+      _invalidateCache();
       notifyListeners();
     }
   }
 
   void dismissLimitNotification() {
-    _showLimitNotification = false;
-    notifyListeners();
+    if (_showLimitNotification) {
+      _showLimitNotification = false;
+      notifyListeners();
+    }
   }
 
   Offset _calculateModalPosition() {

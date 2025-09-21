@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:vos_app/presentation/widgets/circle_icon.dart';
 import 'package:vos_app/core/modal_manager.dart';
 
-class AppIcon extends StatelessWidget {
+class AppIcon extends StatefulWidget {
   final String appId;
   final IconData icon;
   final double size;
@@ -17,103 +17,158 @@ class AppIcon extends StatelessWidget {
   });
 
   @override
+  State<AppIcon> createState() => _AppIconState();
+}
+
+class _AppIconState extends State<AppIcon> with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+  bool _wasMinimized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+    _pulseAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _pulseController,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: modalManager,
+    return ListenableBuilder(
+      listenable: widget.modalManager,
       builder: (context, child) {
-        final isOpen = modalManager.isModalOpen(appId);
-        final isMinimized = modalManager.isModalMinimized(appId);
+        final isOpen = widget.modalManager.isModalOpen(widget.appId);
+        final isMinimized = widget.modalManager.isModalMinimized(widget.appId);
+
+        // Only start/stop pulse animation when state actually changes
+        if (isMinimized && !_wasMinimized) {
+          _pulseController.repeat(reverse: true);
+        } else if (!isMinimized && _wasMinimized) {
+          _pulseController.stop();
+          _pulseController.reset();
+        }
+        _wasMinimized = isMinimized;
 
         return Stack(
           clipBehavior: Clip.none,
           children: [
             CircleIcon(
-              icon: icon,
-              size: size,
+              icon: widget.icon,
+              size: widget.size,
               useFontAwesome: false,
               backgroundColor: isOpen && !isMinimized
-                  ? const Color(0xFF424242) // Normal active state
-                  : null, // Default state
-              onPressed: () => modalManager.openModal(appId),
+                  ? const Color(0xFF424242)
+                  : null,
+              onPressed: () => widget.modalManager.openModal(widget.appId),
             ),
 
-            // Open indicator dot
-            if (isOpen && !isMinimized)
-              Positioned(
-                top: -2,
-                right: -2,
-                child: Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF4CAF50), // Green for open
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: const Color(0xFF303030),
-                      width: 2,
-                    ),
-                  ),
-                ),
-              ),
-
-            // Minimized indicator
-            if (isMinimized)
-              Positioned(
-                top: -2,
-                right: -2,
-                child: Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFF9800), // Orange for minimized
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: const Color(0xFF303030),
-                      width: 2,
-                    ),
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.minimize,
-                      size: 8,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-
-            // Pulsing animation for minimized apps
-            if (isMinimized)
-              Positioned.fill(
-                child: _buildPulsingBorder(),
-              ),
+            // State indicators - only build when needed
+            if (isOpen && !isMinimized) _buildOpenIndicator(),
+            if (isMinimized) _buildMinimizedIndicator(),
           ],
         );
       },
     );
   }
 
-  Widget _buildPulsingBorder() {
-    return TweenAnimationBuilder<double>(
-      duration: const Duration(seconds: 2),
-      tween: Tween<double>(begin: 0.0, end: 1.0),
-      builder: (context, value, child) {
-        return Container(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: const Color(0xFFFF9800).withOpacity(0.3 + (0.4 * value)),
-              width: 2 + (2 * value),
+  Widget _buildOpenIndicator() {
+    return const Positioned(
+      top: -2,
+      right: -2,
+      child: _StateIndicator(
+        color: Color(0xFF4CAF50),
+        size: 12,
+      ),
+    );
+  }
+
+  Widget _buildMinimizedIndicator() {
+    return Positioned(
+      top: -2,
+      right: -2,
+      child: Stack(
+        children: [
+          const _StateIndicator(
+            color: Color(0xFFFF9800),
+            size: 12,
+            icon: Icons.minimize,
+          ),
+          // Optimized pulse border
+          Positioned.fill(
+            child: AnimatedBuilder(
+              animation: _pulseAnimation,
+              builder: (context, child) {
+                return Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Color.lerp(
+                        const Color(0xFFFF9800).withOpacity(0.2),
+                        const Color(0xFFFF9800).withOpacity(0.6),
+                        _pulseAnimation.value,
+                      )!,
+                      width: 1 + _pulseAnimation.value,
+                    ),
+                  ),
+                );
+              },
             ),
           ),
-        );
-      },
-      onEnd: () {
-        // Restart animation
-        if (modalManager.isModalMinimized(appId)) {
-          // Animation will restart automatically due to TweenAnimationBuilder
-        }
-      },
+        ],
+      ),
+    );
+  }
+}
+
+// Optimized reusable state indicator
+class _StateIndicator extends StatelessWidget {
+  final Color color;
+  final double size;
+  final IconData? icon;
+
+  const _StateIndicator({
+    required this.color,
+    required this.size,
+    this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: const Color(0xFF303030),
+          width: 2,
+        ),
+      ),
+      child: icon != null
+          ? Center(
+              child: Icon(
+                icon,
+                size: size * 0.6,
+                color: Colors.white,
+              ),
+            )
+          : null,
     );
   }
 }

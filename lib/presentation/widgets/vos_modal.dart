@@ -179,6 +179,7 @@ class _VosModalState extends State<VosModal> {
         ),
         const SizedBox(width: _iconSpacing),
         CircleIcon(
+          key: ValueKey(_state), // Only rebuild when state changes
           icon: _state == ModalState.fullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
           size: _iconSize,
           useFontAwesome: false,

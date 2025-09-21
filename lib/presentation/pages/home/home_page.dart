@@ -41,17 +41,8 @@ class _HomePageState extends State<HomePage> {
               ),
             ],
           ),
-          // Render all open modals
-          AnimatedBuilder(
-            animation: _modalManager,
-            builder: (context, child) {
-              return Stack(
-                children: _modalManager.openModals.map((modalInstance) {
-                  return modalInstance.modal;
-                }).toList(),
-              );
-            },
-          ),
+          // Optimized modal rendering
+          _OptimizedModalStack(modalManager: _modalManager),
           // Modal limit notification
           ModalLimitNotification(modalManager: _modalManager),
           const Align(
@@ -60,6 +51,35 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+// Separate widget to isolate modal rebuilds
+class _OptimizedModalStack extends StatelessWidget {
+  final VosModalManager modalManager;
+
+  const _OptimizedModalStack({
+    required this.modalManager,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: modalManager,
+      builder: (context, child) {
+        final openModals = modalManager.openModals;
+
+        // Only rebuild when modal list actually changes
+        return Stack(
+          children: openModals.map((modalInstance) {
+            return KeyedSubtree(
+              key: ValueKey(modalInstance.appId),
+              child: modalInstance.modal,
+            );
+          }).toList(),
+        );
+      },
     );
   }
 }
