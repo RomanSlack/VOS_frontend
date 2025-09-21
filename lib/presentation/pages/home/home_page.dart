@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:vos_app/presentation/widgets/app_rail.dart';
+import 'package:vos_app/presentation/widgets/input_bar.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -6,15 +8,21 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
-      body: Center(
-        child: Text(
-          'VOS Home Screen',
-          style: TextStyle(
-            fontSize: 32,
-            fontWeight: FontWeight.w500,
-            color: Colors.white,
+      body: Stack(
+        children: [
+          Row(
+            children: [
+              AppRail(),
+              Expanded(
+                child: SizedBox(), // Empty space for now
+              ),
+            ],
           ),
-        ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: InputBar(),
+          ),
+        ],
       ),
     );
   }
