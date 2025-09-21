@@ -45,7 +45,7 @@ class GridPainter extends CustomPainter {
       final horizontalFade = _calculateFade(
         distanceFromLeft,
         distanceFromRight,
-        fadeDistance
+        fadeDistance,
       );
 
       // Draw line segments with vertical fading
@@ -56,7 +56,7 @@ class GridPainter extends CustomPainter {
         size.height,
         gridHeight,
         fadeDistance,
-        horizontalFade
+        horizontalFade,
       );
     }
 
@@ -70,7 +70,7 @@ class GridPainter extends CustomPainter {
       final verticalFade = _calculateFade(
         distanceFromTop,
         distanceFromBottom,
-        fadeDistance
+        fadeDistance,
       );
 
       // Draw line segments with horizontal fading
@@ -81,7 +81,7 @@ class GridPainter extends CustomPainter {
         size.width,
         gridWidth,
         fadeDistance,
-        verticalFade
+        verticalFade,
       );
     }
   }
@@ -107,7 +107,7 @@ class GridPainter extends CustomPainter {
       final verticalFade = _calculateFade(
         distanceFromTop,
         distanceFromBottom,
-        fadeDistance
+        fadeDistance,
       );
 
       // Combine horizontal and vertical fade
@@ -147,7 +147,7 @@ class GridPainter extends CustomPainter {
       final horizontalFade = _calculateFade(
         distanceFromLeft,
         distanceFromRight,
-        fadeDistance
+        fadeDistance,
       );
 
       // Combine horizontal and vertical fade

@@ -275,3 +275,19 @@ flutter run -d chrome --dart-define=ENVIRONMENT=development
 This design system creates a cohesive, modern virtual OS interface. The dark theme with subtle bevels gives depth without being heavy. The consistent use of circles for icons creates a unified interaction language. The color palette is minimal but effective, creating clear hierarchy without complexity.
 
 Remember: **Consistency is key** - Always follow these patterns for new components.
+
+## 🧪 Testing Protocol
+
+**IMPORTANT**: The user handles all app testing and execution. When implementing components:
+
+- ✅ **You should**: Run `flutter analyze`, validate syntax, check imports
+- ❌ **User will**: Test the app, run scripts, verify functionality
+
+After creating/fixing components, inform the user you're ready for their testing. Do not attempt to run the full application yourself.
+
+## 📄 Current Components
+
+### Workspace Component
+- **Location**: `lib/presentation/widgets/workspace.dart`
+- **Purpose**: Grid background area to the right of AppRail
+- **Features**: `#2F2F2F` grid with edge fade effects, 30 grids wide, responsive height
