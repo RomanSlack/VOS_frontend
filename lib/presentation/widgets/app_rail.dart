@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:vos_app/presentation/widgets/circle_icon.dart';
+import 'package:vos_app/presentation/widgets/app_icon.dart';
+import 'package:vos_app/core/modal_manager.dart';
 
 class AppRail extends StatelessWidget {
-  const AppRail({super.key});
+  final VosModalManager modalManager;
+
+  const AppRail({
+    super.key,
+    required this.modalManager,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -39,67 +46,67 @@ class AppRail extends StatelessWidget {
         children: [
           const SizedBox(height: 20),
           // Main app icons
-          CircleIcon(
+          AppIcon(
+            appId: 'phone',
             icon: Icons.phone_outlined,
             size: iconSize,
-            useFontAwesome: false,
-            onPressed: () {},
+            modalManager: modalManager,
           ),
           const SizedBox(height: iconSpacing),
-          CircleIcon(
+          AppIcon(
+            appId: 'calendar',
             icon: Icons.calendar_today_outlined,
             size: iconSize,
-            useFontAwesome: false,
-            onPressed: () {},
+            modalManager: modalManager,
           ),
           const SizedBox(height: iconSpacing),
-          CircleIcon(
+          AppIcon(
+            appId: 'tasks',
             icon: Icons.check_circle_outline,
             size: iconSize,
-            useFontAwesome: false,
-            onPressed: () {},
+            modalManager: modalManager,
           ),
           const SizedBox(height: iconSpacing),
-          CircleIcon(
+          AppIcon(
+            appId: 'notes',
             icon: Icons.description_outlined,
             size: iconSize,
-            useFontAwesome: false,
-            onPressed: () {},
+            modalManager: modalManager,
           ),
           const SizedBox(height: iconSpacing),
-          CircleIcon(
+          AppIcon(
+            appId: 'browser',
             icon: Icons.language_outlined,
             size: iconSize,
-            useFontAwesome: false,
-            onPressed: () {},
+            modalManager: modalManager,
           ),
           const SizedBox(height: iconSpacing),
-          CircleIcon(
+          AppIcon(
+            appId: 'analytics',
             icon: Icons.bar_chart_outlined,
             size: iconSize,
-            useFontAwesome: false,
-            onPressed: () {},
+            modalManager: modalManager,
           ),
           const SizedBox(height: iconSpacing),
-          CircleIcon(
+          AppIcon(
+            appId: 'shop',
             icon: Icons.shopping_cart_outlined,
             size: iconSize,
-            useFontAwesome: false,
-            onPressed: () {},
+            modalManager: modalManager,
           ),
           const SizedBox(height: iconSpacing),
-          CircleIcon(
+          AppIcon(
+            appId: 'chat',
             icon: Icons.chat_bubble_outline,
             size: iconSize,
-            useFontAwesome: false,
-            onPressed: () {},
+            modalManager: modalManager,
           ),
           const SizedBox(height: iconSpacing),
-          CircleIcon(
+          AppIcon(
+            appId: 'notifications',
             icon: Icons.notifications_outlined,
             size: iconSize,
-            useFontAwesome: false,
-            onPressed: () {},
+            modalManager: modalManager,
           ),
 
           // Double spacing before plus icon
