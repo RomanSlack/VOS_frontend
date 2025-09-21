@@ -1,0 +1,1 @@
+you are new to this project please go to this document in the root read it understand about the project, its principles, the idea, then report back to the user to then begin continuing development, the document can be found here /VOS_frontend/amnesia-design-doc.md 
