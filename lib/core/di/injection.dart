@@ -14,5 +14,5 @@ Future<void> configureDependencies() async {
   // Register ChatService manually since it's not using injectable
   getIt.registerLazySingleton<ChatService>(() => ChatService());
 
-  await getIt.init();
+  getIt.init();
 }
