@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:vos_app/presentation/widgets/vos_modal.dart';
 import 'package:vos_app/presentation/widgets/chat_app.dart';
 import 'package:vos_app/presentation/widgets/calendar_app.dart';
+import 'package:vos_app/presentation/widgets/notes_app.dart';
 import 'package:vos_app/core/chat_manager.dart';
 import 'package:vos_app/core/services/chat_service.dart';
 import 'package:vos_app/core/di/injection.dart';
@@ -99,13 +100,6 @@ class VosModalManager extends ChangeNotifier {
       icon: Icons.check_circle_outline,
       accentColor: Color(0xFF9C27B0),
       contentBuilder: _buildTasksContent,
-    ),
-    AppDefinition(
-      id: 'notes',
-      title: 'Notes',
-      icon: Icons.description_outlined,
-      accentColor: Color(0xFFFF9800),
-      contentBuilder: _buildNotesContent,
     ),
     AppDefinition(
       id: 'browser',
@@ -213,6 +207,12 @@ class VosModalManager extends ChangeNotifier {
       icon = Icons.calendar_today_outlined;
       width = 500;
       height = 420;
+    } else if (appId == 'notes') {
+      child = _buildNotesContent();
+      title = 'Notes';
+      icon = Icons.description_outlined;
+      width = 550;
+      height = 450;
     } else {
       final app = apps.firstWhere((a) => a.id == appId);
       child = app.contentBuilder();
@@ -340,29 +340,6 @@ class VosModalManager extends ChangeNotifier {
     );
   }
 
-  static Widget _buildNotesContent() {
-    return Container(
-      color: const Color(0xFF212121),
-      child: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.description_outlined, size: 64, color: Color(0xFFFF9800)),
-            SizedBox(height: 16),
-            Text(
-              'Notes App',
-              style: TextStyle(color: Color(0xFFEDEDED), fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Write and organize notes',
-              style: TextStyle(color: Color(0xFF757575), fontSize: 14),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   static Widget _buildBrowserContent() {
     return Container(
@@ -445,6 +422,10 @@ class VosModalManager extends ChangeNotifier {
 
   Widget _buildCalendarContent() {
     return const CalendarApp();
+  }
+
+  Widget _buildNotesContent() {
+    return const NotesApp();
   }
 
   static Widget _buildNotificationsContent() {
