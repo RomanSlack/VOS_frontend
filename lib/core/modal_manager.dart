@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:vos_app/presentation/widgets/vos_modal.dart';
 import 'package:vos_app/presentation/widgets/chat_app.dart';
+import 'package:vos_app/presentation/widgets/calendar_app.dart';
 import 'package:vos_app/core/chat_manager.dart';
 import 'package:vos_app/core/services/chat_service.dart';
 import 'package:vos_app/core/di/injection.dart';
@@ -91,13 +92,7 @@ class VosModalManager extends ChangeNotifier {
       accentColor: Color(0xFF4CAF50),
       contentBuilder: _buildPhoneContent,
     ),
-    AppDefinition(
-      id: 'calendar',
-      title: 'Calendar',
-      icon: Icons.calendar_today_outlined,
-      accentColor: Color(0xFF2196F3),
-      contentBuilder: _buildCalendarContent,
-    ),
+    // Note: Calendar app is handled specially - see openModal method
     AppDefinition(
       id: 'tasks',
       title: 'Tasks',
@@ -199,26 +194,39 @@ class VosModalManager extends ChangeNotifier {
       return;
     }
 
-    // Special handling for chat app
+    // Special handling for chat and calendar apps
     Widget child;
     String title;
     IconData icon;
+    double width;
+    double height;
+
     if (appId == 'chat') {
       child = _buildChatContent();
       title = 'AI Assistant';
       icon = Icons.chat_bubble_outline;
+      width = 600;
+      height = 500;
+    } else if (appId == 'calendar') {
+      child = _buildCalendarContent();
+      title = 'Calendar';
+      icon = Icons.calendar_today_outlined;
+      width = 500;
+      height = 420;
     } else {
       final app = apps.firstWhere((a) => a.id == appId);
       child = app.contentBuilder();
       title = app.title;
       icon = app.icon;
+      width = 450;
+      height = 350;
     }
 
     final modal = VosModal(
       appIcon: icon,
       title: title,
-      initialWidth: appId == 'chat' ? 600 : 450,
-      initialHeight: appId == 'chat' ? 500 : 350,
+      initialWidth: width,
+      initialHeight: height,
       initialPosition: _calculateModalPosition(),
       onClose: () => closeModal(appId),
       onMinimize: () => minimizeModal(appId),
@@ -307,29 +315,6 @@ class VosModalManager extends ChangeNotifier {
     );
   }
 
-  static Widget _buildCalendarContent() {
-    return Container(
-      color: const Color(0xFF212121),
-      child: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.calendar_today_outlined, size: 64, color: Color(0xFF2196F3)),
-            SizedBox(height: 16),
-            Text(
-              'Calendar App',
-              style: TextStyle(color: Color(0xFFEDEDED), fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Manage your schedule',
-              style: TextStyle(color: Color(0xFF757575), fontSize: 14),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   static Widget _buildTasksContent() {
     return Container(
@@ -456,6 +441,10 @@ class VosModalManager extends ChangeNotifier {
       chatManager: _chatManager,
       chatService: _chatService,
     );
+  }
+
+  Widget _buildCalendarContent() {
+    return const CalendarApp();
   }
 
   static Widget _buildNotificationsContent() {
