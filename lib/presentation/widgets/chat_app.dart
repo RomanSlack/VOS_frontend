@@ -216,101 +216,134 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: showAvatar ? 16 : 8,
-        left: message.isUser ? 48 : 0,
-        right: message.isUser ? 0 : 48,
-      ),
-      child: Row(
-        mainAxisAlignment:
-          message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (!message.isUser && showAvatar)
-            Container(
-              width: 32,
-              height: 32,
-              margin: const EdgeInsets.only(right: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF00BCD4),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.1),
-                  width: 1,
+    if (message.isUser) {
+      // User messages - keep existing design (not full width)
+      return Padding(
+        padding: EdgeInsets.only(
+          bottom: showAvatar ? 16 : 8,
+          left: 48,
+          right: 0,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Flexible(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
                 ),
-              ),
-              child: const Icon(
-                Icons.auto_awesome,
-                color: Color(0xFFEDEDED),
-                size: 16,
-              ),
-            )
-          else if (!message.isUser)
-            const SizedBox(width: 40),
-
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 10,
-              ),
-              decoration: BoxDecoration(
-                color: message.isUser
-                  ? const Color(0xFF00BCD4).withOpacity(0.15)
-                  : const Color(0xFF424242),
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(16),
-                  topRight: const Radius.circular(16),
-                  bottomLeft: Radius.circular(
-                    !message.isUser && showAvatar ? 4 : 16
+                decoration: BoxDecoration(
+                  color: const Color(0xFF00BCD4).withOpacity(0.15),
+                  borderRadius: BorderRadius.only(
+                    topLeft: const Radius.circular(16),
+                    topRight: const Radius.circular(16),
+                    bottomLeft: const Radius.circular(16),
+                    bottomRight: Radius.circular(showAvatar ? 4 : 16),
                   ),
-                  bottomRight: Radius.circular(
-                    message.isUser && showAvatar ? 4 : 16
+                  border: Border.all(
+                    color: const Color(0xFF00BCD4).withOpacity(0.3),
+                    width: 1,
                   ),
                 ),
-                border: Border.all(
-                  color: message.isUser
-                    ? const Color(0xFF00BCD4).withOpacity(0.3)
-                    : Colors.white.withOpacity(0.05),
-                  width: 1,
-                ),
-              ),
-              child: SelectableText(
-                message.text,
-                style: const TextStyle(
-                  color: const Color(0xFFEDEDED),
-                  fontSize: 14,
-                  height: 1.4,
+                child: SelectableText(
+                  message.text,
+                  style: const TextStyle(
+                    color: Color(0xFFEDEDED),
+                    fontSize: 14,
+                    height: 1.4,
+                  ),
                 ),
               ),
             ),
-          ),
-
-          if (message.isUser && showAvatar)
-            Container(
-              width: 32,
-              height: 32,
-              margin: const EdgeInsets.only(left: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF424242),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: const Color(0xFF00BCD4).withOpacity(0.3),
-                  width: 1,
+            if (showAvatar)
+              Container(
+                width: 32,
+                height: 32,
+                margin: const EdgeInsets.only(left: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF424242),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: const Color(0xFF00BCD4).withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.person_outline,
+                  color: Color(0xFFEDEDED),
+                  size: 16,
+                ),
+              )
+            else
+              const SizedBox(width: 40),
+          ],
+        ),
+      );
+    } else {
+      // AI messages - full width design
+      return Padding(
+        padding: EdgeInsets.only(
+          bottom: showAvatar ? 16 : 8,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (showAvatar)
+              Container(
+                width: 32,
+                height: 32,
+                margin: const EdgeInsets.only(right: 12, top: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF00BCD4),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.1),
+                    width: 1,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.auto_awesome,
+                  color: Color(0xFFEDEDED),
+                  size: 16,
+                ),
+              )
+            else
+              const SizedBox(width: 44),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF424242),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(showAvatar ? 4 : 16),
+                    topRight: const Radius.circular(16),
+                    bottomLeft: const Radius.circular(16),
+                    bottomRight: const Radius.circular(16),
+                  ),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.05),
+                    width: 1,
+                  ),
+                ),
+                child: SelectableText(
+                  message.text,
+                  style: const TextStyle(
+                    color: Color(0xFFEDEDED),
+                    fontSize: 14,
+                    height: 1.4,
+                  ),
                 ),
               ),
-              child: const Icon(
-                Icons.person_outline,
-                color: Color(0xFFEDEDED),
-                size: 16,
-              ),
-            )
-          else if (message.isUser)
-            const SizedBox(width: 40),
-        ],
-      ),
-    );
+            ),
+          ],
+        ),
+      );
+    }
   }
 }
 
