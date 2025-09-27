@@ -13,41 +13,58 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  late VosModalManager _modalManager;
+  VosModalManager? _modalManager;
 
   @override
   void initState() {
     super.initState();
-    _modalManager = VosModalManager();
+    // Delay initialization to ensure GetIt is ready
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setState(() {
+        _modalManager = VosModalManager();
+      });
+    });
   }
 
   @override
   void dispose() {
-    _modalManager.dispose();
+    _modalManager?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // Show loading screen while modal manager is initializing
+    if (_modalManager == null) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF212121),
+        body: Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFF00BCD4),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       body: Stack(
         children: [
           const Workspace(), // Grid background behind everything
           Row(
             children: [
-              AppRail(modalManager: _modalManager),
+              AppRail(modalManager: _modalManager!),
               const Expanded(
                 child: SizedBox(), // Empty space for now
               ),
             ],
           ),
           // Optimized modal rendering
-          _OptimizedModalStack(modalManager: _modalManager),
+          _OptimizedModalStack(modalManager: _modalManager!),
           // Modal limit notification
-          ModalLimitNotification(modalManager: _modalManager),
+          ModalLimitNotification(modalManager: _modalManager!),
           Align(
             alignment: Alignment.bottomCenter,
-            child: InputBar(modalManager: _modalManager),
+            child: InputBar(modalManager: _modalManager!),
           ),
         ],
       ),
