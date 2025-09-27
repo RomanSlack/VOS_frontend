@@ -219,8 +219,8 @@ CircleIcon(
 3. **CircleIcon** - Reusable icon component with hover
 
 ### Icons in App Rail (top to bottom):
-- Phone, Calendar, Check, Document, Globe
-- Chart, Cart, Chat, Bell
+- Phone, Calendar, Tasks, Notes, Browser
+- Analytics, Shop, Chat, Weather (Cloud)
 - Plus (with extra spacing)
 - User (at bottom with special styling)
 
@@ -308,7 +308,7 @@ After creating/fixing components, inform the user you're ready for their testing
 - **Core**: `lib/core/modal_manager.dart` - VosModalManager class
 - **Features**:
   - **4 Modal Limit**: Maximum 4 apps open simultaneously
-  - **App Integration**: 9 predefined apps (Phone, Calendar, Tasks, Notes, Browser, Analytics, Shop, Chat, Notifications)
+  - **App Integration**: 9 predefined apps (Phone, Calendar, Tasks, Notes, Browser, Analytics, Shop, Chat, Weather)
   - **Visual States**: AppIcon component shows green dot (open), orange dot with pulse (minimized)
   - **Smart Positioning**: Auto-cascading modal positions
   - **Limit Notification**: Elegant warning when trying to open 5th modal
@@ -316,3 +316,139 @@ After creating/fixing components, inform the user you're ready for their testing
 - **UI Components**:
   - `AppIcon`: Enhanced rail icons with state indicators
   - `ModalLimitNotification`: Animated warning with app preview
+
+---
+
+## 💬 AI Assistant & Chat System
+
+### Chat Application
+- **Location**: `lib/presentation/widgets/chat_app.dart`
+- **Purpose**: Full ChatGPT-style AI assistant integration
+- **Features**:
+  - **Real OpenAI API Integration**: Live chat completions via FastAPI backend
+  - **Message Bubbles**: User messages (right, compact) vs AI messages (left, full-width)
+  - **Auto-scroll**: Smooth scrolling to new messages
+  - **Thinking Animation**: 3-dot animated indicator during AI responses
+  - **Message Count**: Header shows total conversation messages
+  - **No Input Bar**: Uses main VOS input bar exclusively
+  - **Error Handling**: Production-grade connection and API error handling
+
+### Chat Backend Integration
+- **API Service**: `lib/core/services/chat_service.dart`
+- **HTTP Client**: Dio with Retrofit for type-safe API calls
+- **Models**: `lib/core/models/chat_models.dart` with JSON serialization
+- **Endpoint**: FastAPI server at `http://localhost:5555/chat/completions`
+- **Real API**: No mock data - connects to OpenAI via FastAPI backend
+
+### Chat Manager
+- **State Management**: `lib/core/chat_manager.dart` - ChangeNotifier pattern
+- **Message History**: Persistent conversation within session
+- **Integration**: Auto-opens when typing in main input bar
+- **Duplicate Prevention**: Smart message deduplication system
+
+---
+
+## 🌤️ Weather Application
+
+### Weather App
+- **Location**: `lib/presentation/widgets/weather_app.dart`
+- **Purpose**: Real-time weather display for Rochester, NY
+- **Features**:
+  - **Live Weather Data**: Real API connection to weather service
+  - **Current Conditions**: Large temperature display with weather icon
+  - **Location Display**: Shows "Rochester, NY" from API
+  - **Weather Details**: Humidity and wind speed in elegant cards
+  - **Smart Icons**: Dynamic weather icons based on conditions (cloud, sun, rain, etc.)
+  - **Status Indicators**: Green/yellow/red dot shows connection status
+  - **Auto-refresh**: Manual refresh button with "last updated" timestamp
+  - **Error Handling**: Elegant error states with retry functionality
+  - **No Mock Data**: Production-ready with real weather API
+
+### Weather Backend Integration
+- **API Service**: `lib/core/services/weather_service.dart`
+- **HTTP Client**: Dio with Retrofit for type-safe API calls
+- **Models**: `lib/core/models/weather_models.dart` with JSON serialization
+- **Endpoint**: FastAPI server at `http://localhost:5555/weather/rochester`
+- **JSON Response**: `{"location":"Rochester, NY","temperature":72.5,"description":"Partly cloudy","humidity":65,"wind_speed":8.2,"feels_like":75.1}`
+
+---
+
+## 📝 Notes Application
+
+### Notes App
+- **Location**: `lib/presentation/widgets/notes_app.dart`
+- **Purpose**: Full-featured text editor/notepad
+- **Features**:
+  - **Multi-line Text Editor**: Expandable text input with monospace font
+  - **Header Actions**: Select All, Copy All, Clear All with confirmation
+  - **Status Bar**: Live character/line count and editing status
+  - **Clean Styling**: No blue selection colors, matches VOS input bar design
+  - **Session-based**: No persistence - clears on app close/refresh
+  - **Button States**: Actions disabled when no content
+
+---
+
+## 📅 Calendar Application
+
+### Calendar App
+- **Location**: `lib/presentation/widgets/calendar_app.dart`
+- **Purpose**: Full-featured calendar with month navigation
+- **Features**:
+  - **Month Navigation**: Previous/next month with today button
+  - **Date Selection**: Click any date to select
+  - **Visual States**: Today highlighting, selected date, past dates styling
+  - **Responsive Grid**: Dynamic week calculation with proper date math
+  - **Action Buttons**: Placeholder "Add Event" and "View Day" functionality
+  - **Overflow-free**: Optimized layout for modal constraints
+
+---
+
+## 🏗️ Backend Architecture
+
+### FastAPI Server
+- **Location**: `/home/roman/simple_chat_tester/startup.py`
+- **Purpose**: Backend API server for VOS apps
+- **Endpoints**:
+  - `/chat/completions` - OpenAI chat completions proxy
+  - `/weather/rochester` - Rochester weather data
+  - `/health` - Health check endpoint
+- **Features**:
+  - **CORS Enabled**: Supports Flutter web development
+  - **OpenAI Integration**: Real API key usage for chat
+  - **Weather API**: OpenWeatherMap integration with fallback
+  - **Production Ready**: Proper error handling and logging
+
+### Dependency Injection
+- **Service**: `lib/core/di/injection.dart`
+- **Pattern**: GetIt singleton registration
+- **Services**: ChatService, WeatherService auto-registered
+- **Lifecycle**: Initialized before app startup
+
+---
+
+## 🔄 API Integration Patterns
+
+### HTTP Architecture
+- **Client**: Dio with debug logging in development
+- **Code Generation**: Retrofit + JSON serialization via build_runner
+- **Error Handling**: Specific HTTP status code handling
+- **Type Safety**: Full DTO models with fromJson/toJson
+
+### Service Pattern
+```dart
+// Example service structure
+class WeatherService {
+  late final WeatherApi _weatherApi;
+  late final Dio _dio;
+
+  Future<WeatherData> getCurrentWeather() async {
+    // Real API call with proper error handling
+  }
+}
+```
+
+### Modal Integration
+- **Special Apps**: Chat, Calendar, Notes, Weather get special handling
+- **Service Injection**: Apps receive services via dependency injection
+- **Custom Sizing**: Each app has optimized modal dimensions
+- **State Management**: Apps maintain state within modal lifecycle
