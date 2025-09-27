@@ -42,7 +42,7 @@ class _CalendarAppState extends State<CalendarApp> {
 
   Widget _buildHeader() {
     return Container(
-      height: 52,
+      height: 64,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
         color: const Color(0xFF303030),
