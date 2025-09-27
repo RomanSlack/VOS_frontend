@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:vos_app/presentation/widgets/vos_modal.dart';
+import 'package:vos_app/presentation/widgets/chat_app.dart';
+import 'package:vos_app/core/chat_manager.dart';
+import 'package:vos_app/core/services/chat_service.dart';
+import 'package:vos_app/core/di/injection.dart';
 
 // App definitions for each modal
 class AppDefinition {
@@ -39,6 +43,8 @@ class VosModalManager extends ChangeNotifier {
   final Map<String, ModalInstance> _openModals = {};
   final Map<String, ModalInstance> _minimizedModals = {};
   bool _showLimitNotification = false;
+  late final ChatManager _chatManager;
+  late final ChatService _chatService;
 
   // Cache for performance
   List<ModalInstance>? _openModalsCache;
@@ -63,6 +69,12 @@ class VosModalManager extends ChangeNotifier {
   bool get showLimitNotification => _showLimitNotification;
   int get openModalCount => _openModals.length + _minimizedModals.length;
   bool get canOpenMore => openModalCount < maxModals;
+  ChatManager get chatManager => _chatManager;
+
+  VosModalManager() {
+    _chatManager = ChatManager();
+    _chatService = getIt<ChatService>();
+  }
 
   void _invalidateCache() {
     _cacheValid = false;
@@ -121,13 +133,7 @@ class VosModalManager extends ChangeNotifier {
       accentColor: Color(0xFFE91E63),
       contentBuilder: _buildShopContent,
     ),
-    AppDefinition(
-      id: 'chat',
-      title: 'Chat',
-      icon: Icons.chat_bubble_outline,
-      accentColor: Color(0xFF00BCD4),
-      contentBuilder: _buildChatContent,
-    ),
+    // Note: Chat app is handled specially - see openModal method
     AppDefinition(
       id: 'notifications',
       title: 'Notifications',
@@ -138,7 +144,13 @@ class VosModalManager extends ChangeNotifier {
   ];
 
   // Open or restore a modal
-  void openModal(String appId) {
+  void openModal(String appId, {String? initialMessage}) {
+    // Special handling for chat app with initial message
+    if (appId == 'chat' && initialMessage != null && initialMessage.isNotEmpty) {
+      // Add the message directly to chat manager instead of using pending
+      _chatManager.addMessage(initialMessage, true);
+    }
+
     if (_minimizedModals.containsKey(appId)) {
       // Restore minimized modal
       final instance = _minimizedModals.remove(appId)!;
@@ -150,7 +162,10 @@ class VosModalManager extends ChangeNotifier {
     }
 
     if (_openModals.containsKey(appId)) {
-      // Modal already open, no need to notify
+      // Modal already open, but if it's chat and we have a message, still send it
+      if (appId == 'chat' && initialMessage != null && initialMessage.isNotEmpty) {
+        _chatManager.addMessage(initialMessage, true);
+      }
       return;
     }
 
@@ -169,16 +184,30 @@ class VosModalManager extends ChangeNotifier {
       return;
     }
 
-    final app = apps.firstWhere((a) => a.id == appId);
+    // Special handling for chat app
+    Widget child;
+    String title;
+    IconData icon;
+    if (appId == 'chat') {
+      child = _buildChatContent();
+      title = 'AI Assistant';
+      icon = Icons.chat_bubble_outline;
+    } else {
+      final app = apps.firstWhere((a) => a.id == appId);
+      child = app.contentBuilder();
+      title = app.title;
+      icon = app.icon;
+    }
+
     final modal = VosModal(
-      appIcon: app.icon,
-      title: app.title,
-      initialWidth: 450,
-      initialHeight: 350,
+      appIcon: icon,
+      title: title,
+      initialWidth: appId == 'chat' ? 600 : 450,
+      initialHeight: appId == 'chat' ? 500 : 350,
       initialPosition: _calculateModalPosition(),
       onClose: () => closeModal(appId),
       onMinimize: () => minimizeModal(appId),
-      child: app.contentBuilder(),
+      child: child,
     );
 
     _openModals[appId] = ModalInstance(
@@ -407,27 +436,10 @@ class VosModalManager extends ChangeNotifier {
     );
   }
 
-  static Widget _buildChatContent() {
-    return Container(
-      color: const Color(0xFF212121),
-      child: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.chat_bubble_outline, size: 64, color: Color(0xFF00BCD4)),
-            SizedBox(height: 16),
-            Text(
-              'Chat App',
-              style: TextStyle(color: Color(0xFFEDEDED), fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Message with friends',
-              style: TextStyle(color: Color(0xFF757575), fontSize: 14),
-            ),
-          ],
-        ),
-      ),
+  Widget _buildChatContent() {
+    return ChatApp(
+      chatManager: _chatManager,
+      chatService: _chatService,
     );
   }
 
