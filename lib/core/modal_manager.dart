@@ -3,8 +3,10 @@ import 'package:vos_app/presentation/widgets/vos_modal.dart';
 import 'package:vos_app/presentation/widgets/chat_app.dart';
 import 'package:vos_app/presentation/widgets/calendar_app.dart';
 import 'package:vos_app/presentation/widgets/notes_app.dart';
+import 'package:vos_app/presentation/widgets/weather_app.dart';
 import 'package:vos_app/core/chat_manager.dart';
 import 'package:vos_app/core/services/chat_service.dart';
+import 'package:vos_app/core/services/weather_service.dart';
 import 'package:vos_app/core/di/injection.dart';
 
 // App definitions for each modal
@@ -47,6 +49,7 @@ class VosModalManager extends ChangeNotifier {
   bool _showLimitNotification = false;
   late final ChatManager _chatManager;
   late final ChatService _chatService;
+  late final WeatherService _weatherService;
 
   // Cache for performance
   List<ModalInstance>? _openModalsCache;
@@ -76,6 +79,7 @@ class VosModalManager extends ChangeNotifier {
   VosModalManager() {
     _chatManager = ChatManager();
     _chatService = getIt<ChatService>();
+    _weatherService = getIt<WeatherService>();
   }
 
   void _invalidateCache() {
@@ -122,14 +126,7 @@ class VosModalManager extends ChangeNotifier {
       accentColor: Color(0xFFE91E63),
       contentBuilder: _buildShopContent,
     ),
-    // Note: Chat app is handled specially - see openModal method
-    AppDefinition(
-      id: 'weather',
-      title: 'Weather',
-      icon: Icons.cloud_outlined,
-      accentColor: Color(0xFF03A9F4),
-      contentBuilder: _buildWeatherContent,
-    ),
+    // Note: Chat and weather apps are handled specially - see openModal method
   ];
 
   // Open or restore a modal
@@ -213,6 +210,12 @@ class VosModalManager extends ChangeNotifier {
       icon = Icons.description_outlined;
       width = 550;
       height = 450;
+    } else if (appId == 'weather') {
+      child = _buildWeatherContent();
+      title = 'Weather';
+      icon = Icons.cloud_outlined;
+      width = 480;
+      height = 400;
     } else {
       final app = apps.firstWhere((a) => a.id == appId);
       child = app.contentBuilder();
@@ -428,27 +431,10 @@ class VosModalManager extends ChangeNotifier {
     return const NotesApp();
   }
 
-  static Widget _buildWeatherContent() {
-    return Container(
-      color: const Color(0xFF212121),
-      child: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.cloud_outlined, size: 64, color: Color(0xFF03A9F4)),
-            SizedBox(height: 16),
-            Text(
-              'Weather',
-              style: TextStyle(color: Color(0xFFEDEDED), fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Current weather and forecast',
-              style: TextStyle(color: Color(0xFF757575), fontSize: 14),
-            ),
-          ],
-        ),
-      ),
+  Widget _buildWeatherContent() {
+    return WeatherApp(
+      weatherService: _weatherService,
     );
   }
+
 }
