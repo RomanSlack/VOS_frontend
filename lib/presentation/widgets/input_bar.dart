@@ -1,9 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:vos_app/presentation/widgets/circle_icon.dart';
+import 'package:vos_app/core/modal_manager.dart';
 
-class InputBar extends StatelessWidget {
-  const InputBar({super.key});
+class InputBar extends StatefulWidget {
+  final VosModalManager modalManager;
+
+  const InputBar({
+    super.key,
+    required this.modalManager,
+  });
+
+  @override
+  State<InputBar> createState() => _InputBarState();
+}
+
+class _InputBarState extends State<InputBar> {
+  final TextEditingController _controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _handleSubmit(String text) {
+    if (text.trim().isEmpty) return;
+
+    // Open chat app with the message
+    widget.modalManager.openModal('chat', initialMessage: text);
+
+    // Clear the input
+    _controller.clear();
+    _focusNode.unfocus();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,13 +70,15 @@ class InputBar extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Row(
           children: [
-            const Expanded(
+            Expanded(
               child: TextField(
-                style: TextStyle(
+                controller: _controller,
+                focusNode: _focusNode,
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 16,
                 ),
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   hintText: 'Ask anything',
                   hintStyle: TextStyle(
                     color: Color(0xFF757575),
@@ -58,6 +92,8 @@ class InputBar extends StatelessWidget {
                   contentPadding: EdgeInsets.only(left: 8), // Small left padding
                 ),
                 cursorColor: Colors.white,
+                onSubmitted: _handleSubmit,
+                textInputAction: TextInputAction.send,
               ),
             ),
             const SizedBox(width: 12),

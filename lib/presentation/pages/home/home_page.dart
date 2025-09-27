@@ -45,9 +45,9 @@ class _HomePageState extends State<HomePage> {
           _OptimizedModalStack(modalManager: _modalManager),
           // Modal limit notification
           ModalLimitNotification(modalManager: _modalManager),
-          const Align(
+          Align(
             alignment: Alignment.bottomCenter,
-            child: InputBar(),
+            child: InputBar(modalManager: _modalManager),
           ),
         ],
       ),
