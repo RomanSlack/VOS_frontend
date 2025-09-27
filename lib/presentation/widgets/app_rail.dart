@@ -103,8 +103,8 @@ class AppRail extends StatelessWidget {
           ),
           const SizedBox(height: iconSpacing),
           AppIcon(
-            appId: 'notifications',
-            icon: Icons.notifications_outlined,
+            appId: 'weather',
+            icon: Icons.cloud_outlined,
             size: iconSize,
             modalManager: modalManager,
           ),

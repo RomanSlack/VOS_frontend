@@ -124,11 +124,11 @@ class VosModalManager extends ChangeNotifier {
     ),
     // Note: Chat app is handled specially - see openModal method
     AppDefinition(
-      id: 'notifications',
-      title: 'Notifications',
-      icon: Icons.notifications_outlined,
-      accentColor: Color(0xFFFFEB3B),
-      contentBuilder: _buildNotificationsContent,
+      id: 'weather',
+      title: 'Weather',
+      icon: Icons.cloud_outlined,
+      accentColor: Color(0xFF03A9F4),
+      contentBuilder: _buildWeatherContent,
     ),
   ];
 
@@ -428,22 +428,22 @@ class VosModalManager extends ChangeNotifier {
     return const NotesApp();
   }
 
-  static Widget _buildNotificationsContent() {
+  static Widget _buildWeatherContent() {
     return Container(
       color: const Color(0xFF212121),
       child: const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.notifications_outlined, size: 64, color: Color(0xFFFFEB3B)),
+            Icon(Icons.cloud_outlined, size: 64, color: Color(0xFF03A9F4)),
             SizedBox(height: 16),
             Text(
-              'Notifications',
+              'Weather',
               style: TextStyle(color: Color(0xFFEDEDED), fontSize: 20, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 8),
             Text(
-              'View all notifications',
+              'Current weather and forecast',
               style: TextStyle(color: Color(0xFF757575), fontSize: 14),
             ),
           ],
