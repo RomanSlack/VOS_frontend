@@ -46,7 +46,8 @@ class _ChatAppState extends State<ChatApp> {
       final lastMessage = messages.last;
       if (lastMessage.isUser &&
           lastMessage.text != _lastProcessedMessage &&
-          lastMessage.text.isNotEmpty) {
+          lastMessage.text.isNotEmpty &&
+          !lastMessage.text.startsWith("Hello! I'm your AI assistant")) {
         _lastProcessedMessage = lastMessage.text;
         _triggerAIResponse(lastMessage.text);
       }

@@ -147,8 +147,15 @@ class VosModalManager extends ChangeNotifier {
   void openModal(String appId, {String? initialMessage}) {
     // Special handling for chat app with initial message
     if (appId == 'chat' && initialMessage != null && initialMessage.isNotEmpty) {
-      // Add the message directly to chat manager instead of using pending
-      _chatManager.addMessage(initialMessage, true);
+      // Check if this message was already added to avoid duplicates
+      final messages = _chatManager.messages;
+      final shouldAddMessage = messages.isEmpty ||
+          messages.last.text != initialMessage ||
+          !messages.last.isUser;
+
+      if (shouldAddMessage) {
+        _chatManager.addMessage(initialMessage, true);
+      }
     }
 
     if (_minimizedModals.containsKey(appId)) {
@@ -164,7 +171,15 @@ class VosModalManager extends ChangeNotifier {
     if (_openModals.containsKey(appId)) {
       // Modal already open, but if it's chat and we have a message, still send it
       if (appId == 'chat' && initialMessage != null && initialMessage.isNotEmpty) {
-        _chatManager.addMessage(initialMessage, true);
+        // Check if this message was already added to avoid duplicates
+        final messages = _chatManager.messages;
+        final shouldAddMessage = messages.isEmpty ||
+            messages.last.text != initialMessage ||
+            !messages.last.isUser;
+
+        if (shouldAddMessage) {
+          _chatManager.addMessage(initialMessage, true);
+        }
       }
       return;
     }
