@@ -4,10 +4,17 @@ import 'package:vos_app/core/models/chat_models.dart';
 
 part 'chat_api.g.dart';
 
-@RestApi(baseUrl: 'http://localhost:5555')
+@RestApi(baseUrl: 'http://localhost:8000')
 abstract class ChatApi {
   factory ChatApi(Dio dio) = _ChatApi;
 
-  @POST('/chat/completions')
-  Future<ChatResponseDto> chatCompletions(@Body() ChatRequestDto request);
+  @POST('/api/v1/chat')
+  Future<VosMessageResponseDto> sendMessage(@Body() VosMessageRequestDto request);
+
+  @GET('/api/v1/transcript/{agent_id}')
+  Future<VosTranscriptResponseDto> getTranscript(
+    @Path('agent_id') String agentId, {
+    @Query('limit') int? limit,
+    @Query('offset') int? offset,
+  });
 }
