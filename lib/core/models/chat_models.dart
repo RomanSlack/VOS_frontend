@@ -2,78 +2,93 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'chat_models.g.dart';
 
-@JsonSerializable()
-class ChatMessageDto {
-  final String role;
-  final String content;
+// VOS API Models
 
-  const ChatMessageDto({
+@JsonSerializable()
+class VosMessageRequestDto {
+  final String text;
+
+  const VosMessageRequestDto({
+    required this.text,
+  });
+
+  factory VosMessageRequestDto.fromJson(Map<String, dynamic> json) =>
+      _$VosMessageRequestDtoFromJson(json);
+
+  Map<String, dynamic> toJson() => _$VosMessageRequestDtoToJson(this);
+}
+
+@JsonSerializable()
+class VosMessageResponseDto {
+  final String status;
+  @JsonKey(name: 'notification_id')
+  final String notificationId;
+  final String recipient;
+  final String queue;
+
+  const VosMessageResponseDto({
+    required this.status,
+    required this.notificationId,
+    required this.recipient,
+    required this.queue,
+  });
+
+  factory VosMessageResponseDto.fromJson(Map<String, dynamic> json) =>
+      _$VosMessageResponseDtoFromJson(json);
+
+  Map<String, dynamic> toJson() => _$VosMessageResponseDtoToJson(this);
+}
+
+@JsonSerializable()
+class VosTranscriptMessageContentDto {
+  final String text;
+
+  const VosTranscriptMessageContentDto({
+    required this.text,
+  });
+
+  factory VosTranscriptMessageContentDto.fromJson(Map<String, dynamic> json) =>
+      _$VosTranscriptMessageContentDtoFromJson(json);
+
+  Map<String, dynamic> toJson() => _$VosTranscriptMessageContentDtoToJson(this);
+}
+
+@JsonSerializable()
+class VosTranscriptMessageDto {
+  final String role;
+  final VosTranscriptMessageContentDto content;
+  final List<dynamic> documents;
+
+  const VosTranscriptMessageDto({
     required this.role,
     required this.content,
+    required this.documents,
   });
 
-  factory ChatMessageDto.fromJson(Map<String, dynamic> json) =>
-      _$ChatMessageDtoFromJson(json);
+  factory VosTranscriptMessageDto.fromJson(Map<String, dynamic> json) =>
+      _$VosTranscriptMessageDtoFromJson(json);
 
-  Map<String, dynamic> toJson() => _$ChatMessageDtoToJson(this);
+  Map<String, dynamic> toJson() => _$VosTranscriptMessageDtoToJson(this);
 }
 
 @JsonSerializable()
-class ChatRequestDto {
-  final List<ChatMessageDto> messages;
-  final String model;
-  @JsonKey(name: 'max_tokens')
-  final int maxTokens;
-  final double temperature;
+class VosTranscriptResponseDto {
+  @JsonKey(name: 'agent_id')
+  final String agentId;
+  final List<VosTranscriptMessageDto> messages;
+  @JsonKey(name: 'total_messages')
+  final int totalMessages;
+  final String timestamp;
 
-  const ChatRequestDto({
+  const VosTranscriptResponseDto({
+    required this.agentId,
     required this.messages,
-    this.model = 'gpt-3.5-turbo',
-    this.maxTokens = 1000,
-    this.temperature = 0.7,
+    required this.totalMessages,
+    required this.timestamp,
   });
 
-  factory ChatRequestDto.fromJson(Map<String, dynamic> json) =>
-      _$ChatRequestDtoFromJson(json);
+  factory VosTranscriptResponseDto.fromJson(Map<String, dynamic> json) =>
+      _$VosTranscriptResponseDtoFromJson(json);
 
-  Map<String, dynamic> toJson() => _$ChatRequestDtoToJson(this);
-}
-
-@JsonSerializable()
-class ChatUsageDto {
-  @JsonKey(name: 'prompt_tokens')
-  final int promptTokens;
-  @JsonKey(name: 'completion_tokens')
-  final int completionTokens;
-  @JsonKey(name: 'total_tokens')
-  final int totalTokens;
-
-  const ChatUsageDto({
-    required this.promptTokens,
-    required this.completionTokens,
-    required this.totalTokens,
-  });
-
-  factory ChatUsageDto.fromJson(Map<String, dynamic> json) =>
-      _$ChatUsageDtoFromJson(json);
-
-  Map<String, dynamic> toJson() => _$ChatUsageDtoToJson(this);
-}
-
-@JsonSerializable()
-class ChatResponseDto {
-  final String message;
-  final String model;
-  final ChatUsageDto usage;
-
-  const ChatResponseDto({
-    required this.message,
-    required this.model,
-    required this.usage,
-  });
-
-  factory ChatResponseDto.fromJson(Map<String, dynamic> json) =>
-      _$ChatResponseDtoFromJson(json);
-
-  Map<String, dynamic> toJson() => _$ChatResponseDtoToJson(this);
+  Map<String, dynamic> toJson() => _$VosTranscriptResponseDtoToJson(this);
 }

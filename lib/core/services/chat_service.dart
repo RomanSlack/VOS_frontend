@@ -8,8 +8,23 @@ class ChatService {
   late final ChatApi _chatApi;
   late final Dio _dio;
 
+  static const String _apiKey = 'dev-key-12345';
+  static const String _agentId = 'primary_agent';
+  static const int _maxPollingAttempts = 30;
+  static const Duration _pollingInterval = Duration(seconds: 1);
+
   ChatService() {
     _dio = Dio();
+
+    // Add API key authentication interceptor
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          options.headers['X-API-Key'] = _apiKey;
+          return handler.next(options);
+        },
+      ),
+    );
 
     // Add logging in debug mode
     if (kDebugMode) {
@@ -25,35 +40,78 @@ class ChatService {
 
   Future<String> getChatCompletion(List<ChatMessage> messages) async {
     try {
-      // Convert ChatMessage to ChatMessageDto
-      final dtoMessages = messages.map((msg) => ChatMessageDto(
-        role: msg.isUser ? 'user' : 'assistant',
-        content: msg.text,
-      )).toList();
+      // Extract the last user message
+      final userMessages = messages.where((m) => m.isUser).toList();
+      if (userMessages.isEmpty) {
+        throw Exception('No user message to send');
+      }
 
-      final request = ChatRequestDto(
-        messages: dtoMessages,
-        model: 'gpt-3.5-turbo',
-        maxTokens: 1000,
-        temperature: 0.7,
-      );
+      final lastUserMessage = userMessages.last.text;
 
-      final response = await _chatApi.chatCompletions(request);
-      return response.message;
+      // Get current transcript message count before sending
+      final transcriptBefore = await _chatApi.getTranscript(_agentId, limit: 500);
+      final messageCountBefore = transcriptBefore.totalMessages;
+
+      // Send message to VOS
+      final request = VosMessageRequestDto(text: lastUserMessage);
+      final sendResponse = await _chatApi.sendMessage(request);
+
+      debugPrint('Message sent: ${sendResponse.notificationId}');
+
+      // Poll for response
+      final response = await _pollForResponse(messageCountBefore);
+      return response;
 
     } on DioException catch (e) {
       debugPrint('Chat API Error: ${e.message}');
-      if (e.response?.statusCode == 500) {
-        throw Exception('Server error. Please check if the API server is running and configured properly.');
+      if (e.response?.statusCode == 401) {
+        throw Exception('Authentication failed. Please check API key configuration.');
+      } else if (e.response?.statusCode == 500) {
+        throw Exception('Server error. Please check if the VOS API server is running properly.');
       } else if (e.type == DioExceptionType.connectionTimeout ||
                  e.type == DioExceptionType.connectionError) {
-        throw Exception('Cannot connect to chat server. Please ensure the server is running on localhost:5555');
+        throw Exception('Cannot connect to VOS server. Please ensure the server is running on localhost:8000');
       }
       throw Exception('Chat request failed: ${e.message}');
     } catch (e) {
       debugPrint('Unexpected error: $e');
       throw Exception('An unexpected error occurred: $e');
     }
+  }
+
+  Future<String> _pollForResponse(int previousMessageCount) async {
+    for (int attempt = 0; attempt < _maxPollingAttempts; attempt++) {
+      await Future.delayed(_pollingInterval);
+
+      try {
+        final transcript = await _chatApi.getTranscript(_agentId, limit: 500);
+
+        // Check if we have new messages
+        if (transcript.totalMessages > previousMessageCount) {
+          // Find the last assistant message
+          final assistantMessages = transcript.messages
+              .where((msg) => msg.role == 'assistant')
+              .toList();
+
+          if (assistantMessages.isNotEmpty) {
+            final lastAssistantMessage = assistantMessages.last;
+            return lastAssistantMessage.content.text;
+          }
+        }
+
+        debugPrint('Polling attempt ${attempt + 1}/$_maxPollingAttempts...');
+
+      } on DioException catch (e) {
+        debugPrint('Polling error: ${e.message}');
+        // Continue polling on errors unless it's a critical failure
+        if (e.response?.statusCode == 401) {
+          throw Exception('Authentication failed during polling');
+        }
+        // Otherwise, continue polling
+      }
+    }
+
+    throw Exception('Response timeout: No response received after ${_maxPollingAttempts} seconds');
   }
 
 }
