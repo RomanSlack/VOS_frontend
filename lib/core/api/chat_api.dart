@@ -17,4 +17,12 @@ abstract class ChatApi {
     @Query('limit') int? limit,
     @Query('offset') int? offset,
   });
+
+  // Conversation API endpoints
+  @GET('/api/v1/conversations/{session_id}')
+  Future<ConversationHistoryResponseDto> getConversationHistory(
+    @Path('session_id') String sessionId, {
+    @Query('limit') int? limit,
+    @Query('offset') int? offset,
+  });
 }

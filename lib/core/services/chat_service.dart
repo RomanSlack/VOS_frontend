@@ -1,17 +1,30 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:vos_app/core/api/chat_api.dart';
 import 'package:vos_app/core/models/chat_models.dart';
 import 'package:vos_app/core/chat_manager.dart';
+import 'package:vos_app/core/services/websocket_service.dart';
+import 'package:vos_app/core/services/auth_service.dart';
 
 class ChatService {
   late final ChatApi _chatApi;
   late final Dio _dio;
+  late final WebSocketService _webSocketService;
 
   static const String _apiKey = 'dev-key-12345';
   static const String _agentId = 'primary_agent';
+  static const String _defaultSessionId = 'user_session_default';
+
+  // Keep polling as fallback
   static const int _maxPollingAttempts = 30;
   static const Duration _pollingInterval = Duration(seconds: 1);
+
+  StreamSubscription? _messageSubscription;
+  StreamSubscription? _statusSubscription;
+  StreamSubscription? _actionSubscription;
+  bool _useWebSocket = true; // Toggle to enable/disable WebSocket
 
   ChatService() {
     _dio = Dio();
@@ -36,6 +49,175 @@ class ChatService {
     }
 
     _chatApi = ChatApi(_dio);
+    _webSocketService = WebSocketService();
+  }
+
+  /// Initialize WebSocket connection for a session
+  Future<void> initializeWebSocket({String? sessionId, ChatManager? chatManager}) async {
+    if (!_useWebSocket) return;
+
+    final session = sessionId ?? _defaultSessionId;
+
+    try {
+      // Get JWT token from auth service
+      final authService = AuthService();
+      final token = await authService.getToken();
+
+      await _webSocketService.connect(session, jwtToken: token);
+
+      // Subscribe to message stream if chatManager is provided
+      if (chatManager != null) {
+        _messageSubscription?.cancel();
+        _messageSubscription = _webSocketService.messageStream.listen(
+          (payload) {
+            // Parse the content to extract actual message
+            final actualMessage = _parseMessageContent(payload.content);
+
+            // Add agent message to chat
+            chatManager.addMessage(actualMessage, false);
+            debugPrint('💬 Added message from ${payload.agentId}');
+          },
+          onError: (error) {
+            debugPrint('Error in message stream: $error');
+          },
+        );
+
+        // Subscribe to status updates
+        _statusSubscription?.cancel();
+        _statusSubscription = _webSocketService.statusStream.listen(
+          (payload) {
+            // Handle status updates (thinking, executing, etc.)
+            debugPrint('📊 Status: ${payload.processingState ?? payload.status}');
+            // Update ChatManager with agent status
+            chatManager.updateAgentState(
+              payload.processingState,
+              null, // No action description in this notification
+            );
+          },
+          onError: (error) {
+            debugPrint('Error in status stream: $error');
+          },
+        );
+
+        // Subscribe to agent action status updates
+        _actionSubscription?.cancel();
+        _actionSubscription = _webSocketService.actionStream.listen(
+          (payload) {
+            // Handle action descriptions (e.g., "Searching weather data...")
+            debugPrint('💭 Action: ${payload.actionDescription}');
+            // Update ChatManager with action description
+            chatManager.updateAgentState(
+              null, // No processing state in this notification
+              payload.actionDescription,
+            );
+          },
+          onError: (error) {
+            debugPrint('Error in action stream: $error');
+          },
+        );
+      }
+
+      debugPrint('✅ WebSocket initialized for session: $session');
+    } catch (e) {
+      debugPrint('⚠️ Failed to initialize WebSocket: $e');
+      debugPrint('Falling back to polling mode');
+      _useWebSocket = false;
+    }
+  }
+
+  /// Get WebSocket connection state
+  WebSocketConnectionState get connectionState => _webSocketService.state;
+
+  /// Get WebSocket message stream for UI updates
+  Stream<NewMessagePayload> get messageStream => _webSocketService.messageStream;
+
+  /// Get WebSocket status stream for UI updates
+  Stream<AgentStatusPayload> get statusStream => _webSocketService.statusStream;
+
+  /// Get WebSocket action stream for UI updates
+  Stream<AgentActionStatusPayload> get actionStream => _webSocketService.actionStream;
+
+  /// Get WebSocket app interaction stream for UI updates
+  Stream<AppInteractionPayload> get appInteractionStream => _webSocketService.appInteractionStream;
+
+  /// Parse message content to extract actual user-facing message
+  /// Handles raw agent responses with thought/tool_calls structure
+  String _parseMessageContent(String content) {
+    try {
+      // Try to parse as JSON
+      final jsonData = json.decode(content);
+
+      // Check if it's a raw agent response with tool_calls
+      if (jsonData is Map<String, dynamic> && jsonData.containsKey('tool_calls')) {
+        final toolCalls = jsonData['tool_calls'] as List<dynamic>;
+
+        // Find send_user_message tool call
+        for (final toolCall in toolCalls) {
+          if (toolCall is Map<String, dynamic> &&
+              toolCall['tool_name'] == 'send_user_message') {
+            final arguments = toolCall['arguments'] as Map<String, dynamic>?;
+            if (arguments != null && arguments.containsKey('content')) {
+              return arguments['content'] as String;
+            }
+          }
+        }
+      }
+
+      // If we couldn't extract, return original content
+      return content;
+    } catch (e) {
+      // If not valid JSON, return as-is
+      debugPrint('Could not parse message content as JSON: $e');
+      return content;
+    }
+  }
+
+  /// Load conversation history from the backend
+  Future<List<ChatMessage>> loadConversationHistory({String? sessionId}) async {
+    try {
+      final session = sessionId ?? _defaultSessionId;
+
+      // Get conversation from the conversations API (not transcript API)
+      final conversation = await _chatApi.getConversationHistory(session, limit: 500);
+
+      final messages = <ChatMessage>[];
+
+      // Convert conversation messages to ChatMessage objects
+      for (final msg in conversation.messages) {
+        // Determine if message is from user
+        final isUser = msg.senderType == 'user';
+
+        // Content is already a plain string in conversation_messages
+        final messageText = msg.content;
+
+        // Skip empty messages
+        if (messageText.trim().isEmpty) continue;
+
+        // Parse timestamp
+        DateTime timestamp;
+        try {
+          timestamp = DateTime.parse(msg.timestamp);
+        } catch (e) {
+          timestamp = DateTime.now();
+        }
+
+        messages.add(ChatMessage(
+          text: messageText,
+          isUser: isUser,
+          timestamp: timestamp,
+        ));
+      }
+
+      debugPrint('📜 Loaded ${messages.length} conversation messages from session $session');
+      return messages;
+
+    } on DioException catch (e) {
+      debugPrint('Error loading conversation history: ${e.message}');
+      throw Exception('Failed to load conversation history: ${e.message}');
+    } catch (e) {
+      debugPrint('Unexpected error loading history: $e');
+      throw Exception('Failed to load conversation history: $e');
+    }
   }
 
   Future<String> getChatCompletion(List<ChatMessage> messages) async {
@@ -48,17 +230,23 @@ class ChatService {
 
       final lastUserMessage = userMessages.last.text;
 
-      // Get current transcript message count before sending
-      final transcriptBefore = await _chatApi.getTranscript(_agentId, limit: 500);
-      final messageCountBefore = transcriptBefore.totalMessages;
-
-      // Send message to VOS
+      // Send message to VOS (this already stores in conversation_messages)
       final request = VosMessageRequestDto(text: lastUserMessage);
       final sendResponse = await _chatApi.sendMessage(request);
 
       debugPrint('Message sent: ${sendResponse.notificationId}');
 
-      // Poll for response
+      // If WebSocket is active, response will come through the stream
+      // Return empty string as response will be handled by WebSocket listener
+      if (_useWebSocket && _webSocketService.state == WebSocketConnectionState.connected) {
+        debugPrint('✅ Using WebSocket for response');
+        return ''; // Response will come via WebSocket stream
+      }
+
+      // Fallback to polling if WebSocket is not available
+      debugPrint('⚠️ WebSocket not available, using polling');
+      final transcriptBefore = await _chatApi.getTranscript(_agentId, limit: 500);
+      final messageCountBefore = transcriptBefore.totalMessages;
       final response = await _pollForResponse(messageCountBefore);
       return response;
 
@@ -114,4 +302,11 @@ class ChatService {
     throw Exception('Response timeout: No response received after ${_maxPollingAttempts} seconds');
   }
 
+  /// Dispose and cleanup resources
+  void dispose() {
+    _messageSubscription?.cancel();
+    _statusSubscription?.cancel();
+    _actionSubscription?.cancel();
+    _webSocketService.dispose();
+  }
 }

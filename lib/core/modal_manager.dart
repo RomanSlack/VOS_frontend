@@ -434,6 +434,7 @@ class VosModalManager extends ChangeNotifier {
   Widget _buildWeatherContent() {
     return WeatherApp(
       weatherService: _weatherService,
+      chatService: _chatService,
     );
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vos_app/core/router/app_routes.dart';
+import 'package:vos_app/core/services/auth_service.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -10,16 +11,28 @@ class SplashPage extends StatefulWidget {
 }
 
 class _SplashPageState extends State<SplashPage> {
+  final _authService = AuthService();
+
   @override
   void initState() {
     super.initState();
-    _navigateToHome();
+    _checkAuthAndNavigate();
   }
 
-  Future<void> _navigateToHome() async {
-    await Future.delayed(const Duration(seconds: 2));
+  Future<void> _checkAuthAndNavigate() async {
+    await Future.delayed(const Duration(seconds: 1));
+
+    if (!mounted) return;
+
+    // Check if user is logged in
+    final isLoggedIn = await _authService.isLoggedIn();
+
     if (mounted) {
-      context.go(AppRoutes.home);
+      if (isLoggedIn) {
+        context.go(AppRoutes.home);
+      } else {
+        context.go(AppRoutes.login);
+      }
     }
   }
 

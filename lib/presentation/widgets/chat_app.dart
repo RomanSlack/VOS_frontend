@@ -19,15 +19,47 @@ class ChatApp extends StatefulWidget {
 
 class _ChatAppState extends State<ChatApp> {
   final ScrollController _scrollController = ScrollController();
-  bool _isThinking = false;
   String? _lastProcessedMessage;
+  int _lastMessageCount = 0;
+  bool _isLoadingHistory = true;
+  String? _historyError;
+  String? _agentActionStatus;
 
   @override
   void initState() {
     super.initState();
 
+    // Load conversation history first
+    _loadConversationHistory();
+
+    // Initialize WebSocket connection
+    widget.chatService.initializeWebSocket(
+      chatManager: widget.chatManager,
+    );
+
     // Listen for changes and trigger AI responses for new user messages
     widget.chatManager.addListener(_onChatManagerChanged);
+
+    // Subscribe to action status updates
+    widget.chatService.actionStream.listen((actionPayload) {
+      if (mounted) {
+        setState(() {
+          _agentActionStatus = actionPayload.actionDescription;
+        });
+      }
+    });
+
+    // Subscribe to message stream to clear status when message arrives
+    widget.chatService.messageStream.listen((messagePayload) {
+      if (mounted) {
+        setState(() {
+          _agentActionStatus = null; // Clear status when message arrives
+        });
+      }
+    });
+
+    // Initialize message count
+    _lastMessageCount = widget.chatManager.messages.length;
 
     // Check if there's a new user message that needs AI response
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -35,7 +67,44 @@ class _ChatAppState extends State<ChatApp> {
     });
   }
 
+  Future<void> _loadConversationHistory() async {
+    setState(() {
+      _isLoadingHistory = true;
+      _historyError = null;
+    });
+
+    try {
+      final messages = await widget.chatService.loadConversationHistory();
+      if (mounted) {
+        widget.chatManager.loadMessages(messages);
+        _lastMessageCount = messages.length;
+        setState(() {
+          _isLoadingHistory = false;
+        });
+
+        // Scroll to bottom after loading
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _scrollToBottom();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading conversation history: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingHistory = false;
+          _historyError = 'Failed to load conversation history: ${e.toString()}';
+        });
+      }
+    }
+  }
+
   void _onChatManagerChanged() {
+    // Check if we received a new message (likely from WebSocket)
+    final currentMessageCount = widget.chatManager.messages.length;
+    if (currentMessageCount > _lastMessageCount) {
+      _lastMessageCount = currentMessageCount;
+    }
+
     // Check if there's a new user message that needs AI response
     _checkForNewUserMessage();
   }
@@ -74,10 +143,6 @@ class _ChatAppState extends State<ChatApp> {
   void _triggerAIResponse(String userMessage) async {
     if (userMessage.trim().isEmpty) return;
 
-    setState(() {
-      _isThinking = true;
-    });
-
     _scrollToBottom();
 
     try {
@@ -88,10 +153,11 @@ class _ChatAppState extends State<ChatApp> {
 
       if (!mounted) return;
 
-      widget.chatManager.addMessage(response, false);
-      setState(() {
-        _isThinking = false;
-      });
+      // Only add response if it's not empty (WebSocket responses come via stream)
+      if (response.isNotEmpty) {
+        widget.chatManager.addMessage(response, false);
+      }
+
       _scrollToBottom();
 
     } catch (e) {
@@ -101,9 +167,6 @@ class _ChatAppState extends State<ChatApp> {
       final errorMessage = 'Sorry, I encountered an error: ${e.toString()}';
       widget.chatManager.addMessage(errorMessage, false);
 
-      setState(() {
-        _isThinking = false;
-      });
       _scrollToBottom();
 
       // Log error for debugging
@@ -173,29 +236,115 @@ class _ChatAppState extends State<ChatApp> {
           Expanded(
             child: Stack(
               children: [
-                ListenableBuilder(
-                  listenable: widget.chatManager,
-                  builder: (context, child) {
-                    final messages = widget.chatManager.messages;
-                    return ListView.builder(
-                      controller: _scrollController,
-                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-                      itemCount: messages.length + (_isThinking ? 1 : 0),
-                      itemBuilder: (context, index) {
-                        if (_isThinking && index == messages.length) {
-                          return const _ThinkingIndicator();
-                        }
-
-                        final message = messages[index];
-                        return _MessageBubble(
-                          message: message,
-                          showAvatar: index == 0 ||
-                            messages[index - 1].isUser != message.isUser,
-                        );
-                      },
-                    );
-                  },
-                ),
+                // Add status indicator
+                if (_agentActionStatus != null)
+                  Positioned(
+                    bottom: 16,
+                    left: 20,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF00BCD4).withOpacity(0.9),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF00BCD4).withOpacity(0.3),
+                            blurRadius: 8,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            _agentActionStatus!,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (_isLoadingHistory)
+                  const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(color: Color(0xFF00BCD4)),
+                        SizedBox(height: 16),
+                        Text(
+                          'Loading conversation history...',
+                          style: TextStyle(color: Color(0xFF757575)),
+                        ),
+                      ],
+                    ),
+                  )
+                else if (_historyError != null)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.error_outline,
+                            size: 64,
+                            color: Color(0xFFFF5252),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            _historyError!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Color(0xFFEDEDED),
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          ElevatedButton(
+                            onPressed: _loadConversationHistory,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF00BCD4),
+                            ),
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  ListenableBuilder(
+                    listenable: widget.chatManager,
+                    builder: (context, child) {
+                      final messages = widget.chatManager.messages;
+                      return ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                        itemCount: messages.length,
+                        itemBuilder: (context, index) {
+                          final message = messages[index];
+                          return _MessageBubble(
+                            message: message,
+                            showAvatar: index == 0 ||
+                              messages[index - 1].isUser != message.isUser,
+                          );
+                        },
+                      );
+                    },
+                  ),
               ],
             ),
           ),
@@ -214,6 +363,17 @@ class _MessageBubble extends StatelessWidget {
     required this.showAvatar,
   });
 
+  String _formatTimestamp(DateTime timestamp) {
+    final now = DateTime.now();
+    final difference = now.difference(timestamp);
+
+    if (difference.inDays > 0) {
+      return '${timestamp.day}/${timestamp.month} ${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
+    } else {
+      return '${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (message.isUser) {
@@ -228,6 +388,17 @@ class _MessageBubble extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.end,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
+            // Add timestamp before bubble
+            Padding(
+              padding: const EdgeInsets.only(right: 8, bottom: 4),
+              child: Text(
+                _formatTimestamp(message.timestamp),
+                style: const TextStyle(
+                  color: Color(0xFF757575),
+                  fontSize: 10,
+                ),
+              ),
+            ),
             Flexible(
               child: Container(
                 padding: const EdgeInsets.symmetric(
@@ -312,32 +483,48 @@ class _MessageBubble extends StatelessWidget {
             else
               const SizedBox(width: 44),
             Expanded(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF424242),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(showAvatar ? 4 : 16),
-                    topRight: const Radius.circular(16),
-                    bottomLeft: const Radius.circular(16),
-                    bottomRight: const Radius.circular(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF424242),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(showAvatar ? 4 : 16),
+                        topRight: const Radius.circular(16),
+                        bottomLeft: const Radius.circular(16),
+                        bottomRight: const Radius.circular(16),
+                      ),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.05),
+                        width: 1,
+                      ),
+                    ),
+                    child: SelectableText(
+                      message.text,
+                      style: const TextStyle(
+                        color: Color(0xFFEDEDED),
+                        fontSize: 14,
+                        height: 1.4,
+                      ),
+                    ),
                   ),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.05),
-                    width: 1,
+                  // Add timestamp below bubble
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16, top: 4),
+                    child: Text(
+                      _formatTimestamp(message.timestamp),
+                      style: const TextStyle(
+                        color: Color(0xFF757575),
+                        fontSize: 10,
+                      ),
+                    ),
                   ),
-                ),
-                child: SelectableText(
-                  message.text,
-                  style: const TextStyle(
-                    color: Color(0xFFEDEDED),
-                    fontSize: 14,
-                    height: 1.4,
-                  ),
-                ),
+                ],
               ),
             ),
           ],
@@ -346,104 +533,3 @@ class _MessageBubble extends StatelessWidget {
     }
   }
 }
-
-class _ThinkingIndicator extends StatefulWidget {
-  const _ThinkingIndicator();
-
-  @override
-  State<_ThinkingIndicator> createState() => _ThinkingIndicatorState();
-}
-
-class _ThinkingIndicatorState extends State<_ThinkingIndicator>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    )..repeat();
-
-    _animation = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeInOut,
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            margin: const EdgeInsets.only(right: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF00BCD4),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.white.withOpacity(0.1),
-                width: 1,
-              ),
-            ),
-            child: const Icon(
-              Icons.auto_awesome,
-              color: Color(0xFFEDEDED),
-              size: 16,
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 12,
-            ),
-            decoration: BoxDecoration(
-              color: const Color(0xFF424242),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.05),
-                width: 1,
-              ),
-            ),
-            child: AnimatedBuilder(
-              animation: _animation,
-              builder: (context, child) {
-                return Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: List.generate(3, (index) {
-                    final delay = index * 0.2;
-                    final value = (_animation.value + delay) % 1.0;
-                    return Container(
-                      width: 8,
-                      height: 8,
-                      margin: EdgeInsets.only(right: index < 2 ? 6 : 0),
-                      decoration: BoxDecoration(
-                        color: Color(0xFF00BCD4).withOpacity(
-                          0.3 + (0.7 * (0.5 + 0.5 * (1 - (value * 2 - 1).abs()))),
-                        ),
-                        shape: BoxShape.circle,
-                      ),
-                    );
-                  }),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-

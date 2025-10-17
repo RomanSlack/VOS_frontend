@@ -4,10 +4,13 @@ import 'package:vos_app/core/models/weather_models.dart';
 
 part 'weather_api.g.dart';
 
-@RestApi(baseUrl: 'http://localhost:5555')
+@RestApi(baseUrl: 'http://localhost:8000')
 abstract class WeatherApi {
   factory WeatherApi(Dio dio) = _WeatherApi;
 
-  @GET('/weather/rochester')
-  Future<WeatherResponseDto> getRochesterWeather();
+  @GET('/api/v1/weather/current')
+  Future<WeatherResponseDto> getCurrentWeather({
+    @Query('location') required String location,
+    @Query('units') String units = 'metric',
+  });
 }

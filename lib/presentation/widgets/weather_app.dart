@@ -1,13 +1,17 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:vos_app/core/services/weather_service.dart';
+import 'package:vos_app/core/services/chat_service.dart';
 import 'package:vos_app/core/models/weather_models.dart';
 
 class WeatherApp extends StatefulWidget {
   final WeatherService weatherService;
+  final ChatService? chatService;
 
   const WeatherApp({
     super.key,
     required this.weatherService,
+    this.chatService,
   });
 
   @override
@@ -15,34 +19,96 @@ class WeatherApp extends StatefulWidget {
 }
 
 class _WeatherAppState extends State<WeatherApp> {
+  final TextEditingController _searchController = TextEditingController();
   WeatherData? _weatherData;
   bool _isLoading = false;
   String? _errorMessage;
+  StreamSubscription? _appInteractionSubscription;
 
   @override
   void initState() {
     super.initState();
-    _loadWeatherData();
+    _loadDefaultWeather();
+    _subscribeToWebSocketUpdates();
   }
 
-  Future<void> _loadWeatherData() async {
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _appInteractionSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _subscribeToWebSocketUpdates() {
+    // Listen for weather agent updates via WebSocket
+    if (widget.chatService == null) return;
+
+    _appInteractionSubscription = widget.chatService!.appInteractionStream.listen(
+      (payload) {
+        if (payload.appName == 'weather_app' && payload.action == 'weather_data_fetched') {
+          try {
+            final weatherDto = WeatherResponseDto.fromJson(payload.result);
+            setState(() {
+              _weatherData = WeatherData.fromDto(weatherDto);
+              _errorMessage = null;
+            });
+            debugPrint('📱 Received weather update from agent');
+          } catch (e) {
+            debugPrint('Error parsing agent weather data: $e');
+          }
+        }
+      },
+      onError: (error) {
+        debugPrint('Error in app interaction stream: $error');
+      },
+    );
+  }
+
+  Future<void> _loadDefaultWeather() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      final weatherData = await widget.weatherService.getCurrentWeather();
+      final weather = await widget.weatherService.getDefaultWeather();
       if (mounted) {
         setState(() {
-          _weatherData = weatherData;
+          _weatherData = weather;
           _isLoading = false;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = e.toString();
+          _errorMessage = e.toString().replaceAll('Exception: ', '');
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _searchWeather() async {
+    final cityName = _searchController.text.trim();
+    if (cityName.isEmpty) return;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final weather = await widget.weatherService.searchWeather(cityName);
+      if (mounted) {
+        setState(() {
+          _weatherData = weather;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString().replaceAll('Exception: ', '');
           _isLoading = false;
         });
       }
@@ -55,9 +121,18 @@ class _WeatherAppState extends State<WeatherApp> {
       color: const Color(0xFF212121),
       child: Column(
         children: [
+          // Header with search bar
           _buildHeader(),
+
+          // Weather content
           Expanded(
-            child: _buildContent(),
+            child: _isLoading
+                ? _buildLoading()
+                : _errorMessage != null
+                    ? _buildError()
+                    : _weatherData != null
+                        ? _buildWeatherContent()
+                        : _buildEmptyState(),
           ),
         ],
       ),
@@ -66,8 +141,7 @@ class _WeatherAppState extends State<WeatherApp> {
 
   Widget _buildHeader() {
     return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFF303030),
         border: Border(
@@ -79,136 +153,110 @@ class _WeatherAppState extends State<WeatherApp> {
       ),
       child: Row(
         children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: _getStatusColor(),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: _getStatusColor().withOpacity(0.6),
-                  blurRadius: 8,
-                  spreadRadius: 2,
+          Expanded(
+            child: Container(
+              height: 44,
+              decoration: BoxDecoration(
+                color: const Color(0xFF424242),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.1),
+                  width: 1,
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Text(
-            'Weather',
-            style: TextStyle(
-              color: Color(0xFFEDEDED),
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const Spacer(),
-          if (_weatherData != null)
-            Text(
-              'Updated ${_getTimeAgo(_weatherData!.lastUpdated)}',
-              style: const TextStyle(
-                color: Color(0xFF757575),
-                fontSize: 12,
+              ),
+              child: Row(
+                children: [
+                  const SizedBox(width: 16),
+                  const Icon(
+                    Icons.search,
+                    color: Color(0xFF757575),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      style: const TextStyle(
+                        color: Color(0xFFEDEDED),
+                        fontSize: 14,
+                      ),
+                      decoration: const InputDecoration(
+                        hintText: 'Search for a city...',
+                        hintStyle: TextStyle(
+                          color: Color(0xFF757575),
+                          fontSize: 14,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                      onSubmitted: (_) => _searchWeather(),
+                    ),
+                  ),
+                  if (_isLoading)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12),
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Color(0xFF00BCD4),
+                        ),
+                      ),
+                    )
+                  else
+                    IconButton(
+                      icon: const Icon(Icons.arrow_forward),
+                      color: const Color(0xFF00BCD4),
+                      iconSize: 20,
+                      onPressed: _searchWeather,
+                    ),
+                ],
               ),
             ),
-          const SizedBox(width: 12),
-          IconButton(
-            onPressed: _isLoading ? null : _loadWeatherData,
-            icon: Icon(
-              Icons.refresh_outlined,
-              color: _isLoading ? const Color(0xFF424242) : const Color(0xFF03A9F4),
-              size: 20,
-            ),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildContent() {
-    if (_isLoading) {
-      return _buildLoadingState();
-    }
-
-    if (_errorMessage != null) {
-      return _buildErrorState();
-    }
-
-    if (_weatherData != null) {
-      return _buildWeatherDisplay();
-    }
-
-    return _buildEmptyState();
-  }
-
-  Widget _buildLoadingState() {
+  Widget _buildLoading() {
     return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(
-            color: Color(0xFF03A9F4),
-            strokeWidth: 3,
-          ),
-          SizedBox(height: 16),
-          Text(
-            'Loading weather data...',
-            style: TextStyle(
-              color: Color(0xFF757575),
-              fontSize: 14,
-            ),
-          ),
-        ],
+      child: CircularProgressIndicator(
+        color: Color(0xFF00BCD4),
       ),
     );
   }
 
-  Widget _buildErrorState() {
+  Widget _buildError() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               Icons.error_outline,
-              color: const Color(0xFFFF5722),
-              size: 48,
+              size: 64,
+              color: Color(0xFFFF5252),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Weather Unavailable',
-              style: TextStyle(
-                color: Color(0xFFEDEDED),
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
             Text(
               _errorMessage!,
-              style: const TextStyle(
-                color: Color(0xFF757575),
-                fontSize: 14,
-              ),
               textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: _loadWeatherData,
-              icon: const Icon(Icons.refresh_outlined, size: 18),
-              label: const Text('Try Again'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF03A9F4),
-                foregroundColor: const Color(0xFFEDEDED),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+              style: const TextStyle(
+                color: Color(0xFFEDEDED),
+                fontSize: 16,
               ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _loadDefaultWeather,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF00BCD4),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Try Again'),
             ),
           ],
         ),
@@ -217,209 +265,88 @@ class _WeatherAppState extends State<WeatherApp> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.cloud_outlined,
-            color: const Color(0xFF424242),
-            size: 64,
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'No Weather Data',
-            style: TextStyle(
-              color: Color(0xFFEDEDED),
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Tap refresh to load current weather',
-            style: TextStyle(
-              color: Color(0xFF757575),
-              fontSize: 14,
-            ),
-          ),
-        ],
+    return const Center(
+      child: Text(
+        'Search for a city to see weather',
+        style: TextStyle(
+          color: Color(0xFF757575),
+          fontSize: 16,
+        ),
       ),
     );
   }
 
-  Widget _buildWeatherDisplay() {
+  Widget _buildWeatherContent() {
     final weather = _weatherData!;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildCurrentWeather(weather),
-          const SizedBox(height: 24),
-          _buildWeatherDetails(weather),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCurrentWeather(WeatherData weather) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: const Color(0xFF303030),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.05),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.location_on_outlined,
-                color: const Color(0xFF03A9F4),
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                weather.location,
-                style: const TextStyle(
-                  color: Color(0xFF03A9F4),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                weather.temperatureDisplay,
-                style: const TextStyle(
-                  color: Color(0xFFEDEDED),
-                  fontSize: 64,
-                  fontWeight: FontWeight.w200,
-                  height: 1.0,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Icon(
-                  _getWeatherIcon(weather.description),
-                  color: const Color(0xFF03A9F4),
-                  size: 48,
-                ),
-              ),
-            ],
+          // Location
+          Text(
+            weather.locationDisplay,
+            style: const TextStyle(
+              color: Color(0xFFEDEDED),
+              fontSize: 28,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 8),
+
+          // Weather icon emoji
           Text(
-            weather.description,
+            weather.condition.emoji,
+            style: const TextStyle(fontSize: 80),
+          ),
+          const SizedBox(height: 8),
+
+          // Temperature
+          Text(
+            weather.temperatureDisplay,
+            style: const TextStyle(
+              color: Color(0xFFEDEDED),
+              fontSize: 72,
+              fontWeight: FontWeight.bold,
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Feels like & description
+          Text(
+            weather.feelsLikeDisplay,
             style: const TextStyle(
               color: Color(0xFF757575),
               fontSize: 16,
-              fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            'Feels like ${weather.feelsLikeDisplay}',
+            weather.condition.description,
+            style: const TextStyle(
+              color: Color(0xFFEDEDED),
+              fontSize: 18,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            weather.tempRangeDisplay,
             style: const TextStyle(
               color: Color(0xFF757575),
               fontSize: 14,
             ),
           ),
-        ],
-      ),
-    );
-  }
+          const SizedBox(height: 32),
 
-  Widget _buildWeatherDetails(WeatherData weather) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Details',
-          style: TextStyle(
-            color: Color(0xFFEDEDED),
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _buildDetailCard(
-                icon: Icons.water_drop_outlined,
-                label: 'Humidity',
-                value: weather.humidityDisplay,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildDetailCard(
-                icon: Icons.air_outlined,
-                label: 'Wind Speed',
-                value: weather.windSpeedDisplay,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
+          // Details grid
+          _buildDetailsGrid(weather),
 
-  Widget _buildDetailCard({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2A2A2A),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.05),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        children: [
-          Icon(
-            icon,
-            color: const Color(0xFF03A9F4),
-            size: 24,
-          ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 24),
+
+          // Last updated
           Text(
-            value,
-            style: const TextStyle(
-              color: Color(0xFFEDEDED),
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
+            'Last updated: ${_formatTime(weather.lastUpdated)}',
             style: const TextStyle(
               color: Color(0xFF757575),
               fontSize: 12,
@@ -430,35 +357,142 @@ class _WeatherAppState extends State<WeatherApp> {
     );
   }
 
-  Color _getStatusColor() {
-    if (_isLoading) return const Color(0xFFFFEB3B);
-    if (_errorMessage != null) return const Color(0xFFFF5722);
-    if (_weatherData != null) return const Color(0xFF4CAF50);
-    return const Color(0xFF424242);
+  Widget _buildDetailsGrid(WeatherData weather) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF303030),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.05),
+          width: 1,
+        ),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _buildDetailItem(
+                  Icons.water_drop,
+                  'Humidity',
+                  weather.atmosphere.humidity,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildDetailItem(
+                  Icons.air,
+                  'Wind',
+                  '${weather.wind.speed} ${weather.wind.directionText}',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildDetailItem(
+                  Icons.speed,
+                  'Pressure',
+                  weather.atmosphere.pressure,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildDetailItem(
+                  Icons.visibility,
+                  'Visibility',
+                  weather.visibility,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildDetailItem(
+                  Icons.cloud,
+                  'Cloudiness',
+                  weather.cloudiness,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildDetailItem(
+                  Icons.wb_sunny,
+                  'Sunrise',
+                  weather.sunrise,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildDetailItem(
+                  Icons.nights_stay,
+                  'Sunset',
+                  weather.sunset,
+                ),
+              ),
+              const Spacer(),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
-  IconData _getWeatherIcon(String description) {
-    final desc = description.toLowerCase();
-    if (desc.contains('cloud')) return Icons.cloud_outlined;
-    if (desc.contains('rain')) return Icons.umbrella_outlined;
-    if (desc.contains('snow')) return Icons.ac_unit_outlined;
-    if (desc.contains('sun') || desc.contains('clear')) return Icons.wb_sunny_outlined;
-    if (desc.contains('storm')) return Icons.thunderstorm_outlined;
-    return Icons.cloud_outlined;
+  Widget _buildDetailItem(IconData icon, String label, String value) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF424242),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.05),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: const Color(0xFF00BCD4),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Color(0xFF757575),
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Color(0xFFEDEDED),
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  String _getTimeAgo(DateTime dateTime) {
-    final now = DateTime.now();
-    final difference = now.difference(dateTime);
-
-    if (difference.inMinutes < 1) {
-      return 'just now';
-    } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes}m ago';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours}h ago';
-    } else {
-      return '${difference.inDays}d ago';
-    }
+  String _formatTime(DateTime time) {
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
 }
