@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:vos_app/presentation/widgets/circle_icon.dart';
+import 'package:vos_app/presentation/widgets/wave_text_animation.dart';
 
 enum ModalState { normal, minimized, fullscreen }
 
@@ -13,6 +14,8 @@ class VosModal extends StatefulWidget {
   final VoidCallback? onClose;
   final VoidCallback? onMinimize;
   final VoidCallback? onFullscreen;
+  final ValueNotifier<String?>? statusNotifier;
+  final ValueNotifier<bool>? isActiveNotifier;
 
   const VosModal({
     super.key,
@@ -25,6 +28,8 @@ class VosModal extends StatefulWidget {
     this.onClose,
     this.onMinimize,
     this.onFullscreen,
+    this.statusNotifier,
+    this.isActiveNotifier,
   });
 
   @override
@@ -146,20 +151,61 @@ class _VosModalState extends State<VosModal> {
             ),
           ),
         ),
-        child: Row(
+        child: Stack(
           children: [
-            const SizedBox(width: 16),
-            Text(
-              widget.title,
-              style: const TextStyle(
-                color: _textColor,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+            // Left side: Icon and Status
+            Positioned(
+              left: 16,
+              top: 0,
+              bottom: 0,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Icon with hover-to-show-title animation
+                  _AnimatedTitleIcon(
+                    icon: widget.appIcon,
+                    title: widget.title,
+                  ),
+                  // Status indicator (if available)
+                  if (widget.statusNotifier != null)
+                    ValueListenableBuilder<String?>(
+                      valueListenable: widget.statusNotifier!,
+                      builder: (context, status, child) {
+                        if (status == null || status.isEmpty) {
+                          return const SizedBox.shrink();
+                        }
+                        return Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(width: 12),
+                            Container(
+                              constraints: BoxConstraints(
+                                maxWidth: MediaQuery.of(context).size.width * 0.3,
+                              ),
+                              child: WaveTextAnimation(
+                                text: status,
+                                isActiveNotifier: widget.isActiveNotifier,
+                                style: const TextStyle(
+                                  color: Color(0xFF00BCD4),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                ],
               ),
             ),
-            const Spacer(),
-            _buildWindowControls(),
-            const SizedBox(width: 12),
+            // Right side: Window controls
+            Positioned(
+              right: 16,
+              top: 0,
+              bottom: 0,
+              child: _buildWindowControls(),
+            ),
           ],
         ),
       ),
@@ -193,14 +239,6 @@ class _VosModalState extends State<VosModal> {
           useFontAwesome: false,
           backgroundColor: const Color(0xFF424242),
           onPressed: _onClosePressed,
-        ),
-        const SizedBox(width: _iconSpacing),
-        CircleIcon(
-          icon: widget.appIcon,
-          size: _iconSize,
-          useFontAwesome: false,
-          backgroundColor: const Color(0xFF424242),
-          onPressed: null, // App icon is not clickable
         ),
       ],
     );
@@ -344,6 +382,113 @@ class ResizeHandlePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// Animated icon that expands to show title on hover
+class _AnimatedTitleIcon extends StatefulWidget {
+  final IconData icon;
+  final String title;
+
+  const _AnimatedTitleIcon({
+    required this.icon,
+    required this.title,
+  });
+
+  @override
+  State<_AnimatedTitleIcon> createState() => _AnimatedTitleIconState();
+}
+
+class _AnimatedTitleIconState extends State<_AnimatedTitleIcon>
+    with SingleTickerProviderStateMixin {
+  bool _isHovered = false;
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+
+    // Scale animation for the "pop" effect
+    _scaleAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(begin: 1.0, end: 1.2)
+            .chain(CurveTween(curve: Curves.easeOut)),
+        weight: 50,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: 1.2, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeIn)),
+        weight: 50,
+      ),
+    ]).animate(_controller);
+
+    // Slide animation for the text appearance
+    _slideAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) {
+        setState(() => _isHovered = true);
+        _controller.forward();
+      },
+      onExit: (_) {
+        setState(() => _isHovered = false);
+        _controller.reverse();
+      },
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: _scaleAnimation.value,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Icon (always visible)
+                Icon(
+                  widget.icon,
+                  size: 20,
+                  color: const Color(0xFFEDEDED),
+                ),
+                // Title (slides in on hover)
+                ClipRect(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: _slideAnimation.value,
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: Text(
+                        widget.title,
+                        style: const TextStyle(
+                          color: Color(0xFFEDEDED),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
 }
 
 // Extension for easier modal management

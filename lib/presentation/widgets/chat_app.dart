@@ -6,11 +6,15 @@ import 'package:vos_app/core/services/chat_service.dart';
 class ChatApp extends StatefulWidget {
   final ChatManager chatManager;
   final ChatService chatService;
+  final ValueNotifier<String?> statusNotifier;
+  final ValueNotifier<bool> isActiveNotifier;
 
   const ChatApp({
     super.key,
     required this.chatManager,
     required this.chatService,
+    required this.statusNotifier,
+    required this.isActiveNotifier,
   });
 
   @override
@@ -23,7 +27,6 @@ class _ChatAppState extends State<ChatApp> {
   int _lastMessageCount = 0;
   bool _isLoadingHistory = true;
   String? _historyError;
-  String? _agentActionStatus;
 
   @override
   void initState() {
@@ -42,20 +45,15 @@ class _ChatAppState extends State<ChatApp> {
 
     // Subscribe to action status updates
     widget.chatService.actionStream.listen((actionPayload) {
-      if (mounted) {
-        setState(() {
-          _agentActionStatus = actionPayload.actionDescription;
-        });
-      }
+      widget.statusNotifier.value = actionPayload.actionDescription;
     });
 
-    // Subscribe to message stream to clear status when message arrives
-    widget.chatService.messageStream.listen((messagePayload) {
-      if (mounted) {
-        setState(() {
-          _agentActionStatus = null; // Clear status when message arrives
-        });
-      }
+    // Subscribe to agent status updates (for animation control)
+    widget.chatService.statusStream.listen((statusPayload) {
+      // Agent is active (full animation) only when thinking or executing tools
+      final isThinking = statusPayload.processingState?.toLowerCase() == 'thinking';
+      final isExecuting = statusPayload.processingState?.toLowerCase() == 'executing_tools';
+      widget.isActiveNotifier.value = isThinking || isExecuting;
     });
 
     // Initialize message count
@@ -182,102 +180,10 @@ class _ChatAppState extends State<ChatApp> {
       child: Column(
         children: [
           // Header
-          Container(
-            height: 56,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            decoration: BoxDecoration(
-              color: const Color(0xFF303030),
-              border: Border(
-                bottom: BorderSide(
-                  color: Colors.white.withOpacity(0.05),
-                  width: 1,
-                ),
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF00BCD4),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF00BCD4).withOpacity(0.6),
-                        blurRadius: 8,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Text(
-                  'AI Assistant',
-                  style: const TextStyle(
-                    color: Color(0xFFEDEDED),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  '${widget.chatManager.messages.length} messages',
-                  style: const TextStyle(
-                    color: Color(0xFF757575),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
           // Messages area
           Expanded(
             child: Stack(
               children: [
-                // Add status indicator
-                if (_agentActionStatus != null)
-                  Positioned(
-                    bottom: 16,
-                    left: 20,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF00BCD4).withOpacity(0.9),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF00BCD4).withOpacity(0.3),
-                            blurRadius: 8,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            _agentActionStatus!,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
                 if (_isLoadingHistory)
                   const Center(
                     child: Column(

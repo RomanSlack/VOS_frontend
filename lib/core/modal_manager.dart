@@ -50,6 +50,8 @@ class VosModalManager extends ChangeNotifier {
   late final ChatManager _chatManager;
   late final ChatService _chatService;
   late final WeatherService _weatherService;
+  final ValueNotifier<String?> _chatStatusNotifier = ValueNotifier<String?>(null);
+  final ValueNotifier<bool> _chatIsActiveNotifier = ValueNotifier<bool>(true);
 
   // Cache for performance
   List<ModalInstance>? _openModalsCache;
@@ -194,7 +196,7 @@ class VosModalManager extends ChangeNotifier {
 
     if (appId == 'chat') {
       child = _buildChatContent();
-      title = 'AI Assistant';
+      title = 'Chat';
       icon = Icons.chat_bubble_outline;
       width = 600;
       height = 500;
@@ -233,6 +235,8 @@ class VosModalManager extends ChangeNotifier {
       initialPosition: _calculateModalPosition(),
       onClose: () => closeModal(appId),
       onMinimize: () => minimizeModal(appId),
+      statusNotifier: appId == 'chat' ? _chatStatusNotifier : null,
+      isActiveNotifier: appId == 'chat' ? _chatIsActiveNotifier : null,
       child: child,
     );
 
@@ -420,6 +424,8 @@ class VosModalManager extends ChangeNotifier {
     return ChatApp(
       chatManager: _chatManager,
       chatService: _chatService,
+      statusNotifier: _chatStatusNotifier,
+      isActiveNotifier: _chatIsActiveNotifier,
     );
   }
 
