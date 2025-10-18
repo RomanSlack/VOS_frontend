@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 
 enum AgentProcessingState {
   idle,
@@ -6,16 +7,31 @@ enum AgentProcessingState {
   executingTools,
 }
 
+enum MessageStatus {
+  sending,     // Optimistic update - message being sent
+  sent,        // Successfully sent to server
+  error,       // Failed to send
+  received,    // Received from server (for AI messages)
+}
+
 class ChatManager extends ChangeNotifier {
   final List<ChatMessage> _messages = [];
   AgentProcessingState _agentState = AgentProcessingState.idle;
   String? _actionDescription;
+  bool _isConnected = true; // WebSocket connection status
+  int _lastReadIndex = -1;
 
   List<ChatMessage> get messages => List.unmodifiable(_messages);
   bool get hasMessages => _messages.isNotEmpty;
   AgentProcessingState get agentState => _agentState;
   String? get actionDescription => _actionDescription;
   bool get isAgentWorking => _agentState != AgentProcessingState.idle;
+  bool get isConnected => _isConnected;
+
+  int get unreadCount {
+    if (_lastReadIndex < 0) return 0;
+    return _messages.length - _lastReadIndex - 1;
+  }
 
   ChatManager() {
     // Start with empty messages - will be loaded from conversation history
@@ -26,14 +42,49 @@ class ChatManager extends ChangeNotifier {
       text: text,
       isUser: isUser,
       timestamp: DateTime.now(),
+      status: MessageStatus.received,
     ));
     notifyListeners();
+  }
+
+  // Add optimistic message (user message before server confirmation)
+  String addOptimisticMessage(String text) {
+    final message = ChatMessage(
+      text: text,
+      isUser: true,
+      timestamp: DateTime.now(),
+      status: MessageStatus.sending,
+    );
+    _messages.add(message);
+    notifyListeners();
+    return message.id;
+  }
+
+  // Update message status after server response
+  void updateMessageStatus(String messageId, MessageStatus status, {String? errorMessage}) {
+    final index = _messages.indexWhere((m) => m.id == messageId);
+    if (index != -1) {
+      _messages[index] = _messages[index].copyWith(
+        status: status,
+        errorMessage: errorMessage,
+      );
+      notifyListeners();
+    }
+  }
+
+  // Update connection status
+  void setConnectionStatus(bool isConnected) {
+    if (_isConnected != isConnected) {
+      _isConnected = isConnected;
+      notifyListeners();
+    }
   }
 
   void clearMessages() {
     _messages.clear();
     _agentState = AgentProcessingState.idle;
     _actionDescription = null;
+    _lastReadIndex = -1;
     notifyListeners();
   }
 
@@ -71,16 +122,53 @@ class ChatManager extends ChangeNotifier {
     _actionDescription = null;
     notifyListeners();
   }
+
+  void markAsRead() {
+    _lastReadIndex = _messages.length - 1;
+    notifyListeners();
+  }
+
+  // Called when user opens chat or scrolls to bottom
+  void updateLastReadPosition(int index) {
+    if (index > _lastReadIndex) {
+      _lastReadIndex = index;
+      notifyListeners();
+    }
+  }
 }
 
 class ChatMessage {
+  final String id;
   final String text;
   final bool isUser;
   final DateTime timestamp;
+  final MessageStatus status;
+  final String? errorMessage;
 
   ChatMessage({
+    String? id,
     required this.text,
     required this.isUser,
     required this.timestamp,
-  });
+    this.status = MessageStatus.received,
+    this.errorMessage,
+  }) : id = id ?? const Uuid().v4();
+
+  // Add copyWith for status updates
+  ChatMessage copyWith({
+    String? text,
+    bool? isUser,
+    DateTime? timestamp,
+    MessageStatus? status,
+    String? errorMessage,
+  }) {
+    return ChatMessage(
+      id: this.id,
+      text: text ?? this.text,
+      isUser: isUser ?? this.isUser,
+      timestamp: timestamp ?? this.timestamp,
+      status: status ?? this.status,
+      errorMessage: errorMessage ?? this.errorMessage,
+    );
+  }
 }

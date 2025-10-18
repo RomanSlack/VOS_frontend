@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:vos_app/presentation/widgets/circle_icon.dart';
 import 'package:vos_app/core/modal_manager.dart';
+import 'package:vos_app/core/chat_manager.dart';
+import 'package:vos_app/utils/chat_toast.dart';
 
 class InputBar extends StatefulWidget {
   final VosModalManager modalManager;
@@ -26,15 +28,21 @@ class _InputBarState extends State<InputBar> {
     super.dispose();
   }
 
-  void _handleSubmit(String text) {
+  void _handleSubmit(String text) async {
     if (text.trim().isEmpty) return;
 
-    // Open chat app with the message
-    widget.modalManager.openModal('chat', initialMessage: text);
-
-    // Clear the input
+    // Clear the input immediately for better UX
     _controller.clear();
     _focusNode.unfocus();
+
+    // Add optimistic message immediately
+    final messageId = widget.modalManager.chatManager.addOptimisticMessage(text);
+
+    // Open chat app to show the message
+    widget.modalManager.openModal('chat', initialMessage: text);
+
+    // The ChatApp will detect the new user message and trigger the AI response
+    // which will handle updating the message status
   }
 
   @override
