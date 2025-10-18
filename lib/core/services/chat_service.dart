@@ -128,6 +128,9 @@ class ChatService {
   /// Get WebSocket connection state
   WebSocketConnectionState get connectionState => _webSocketService.state;
 
+  /// Get WebSocket state stream for UI updates
+  Stream<WebSocketConnectionState> get stateStream => _webSocketService.stateStream;
+
   /// Get WebSocket message stream for UI updates
   Stream<NewMessagePayload> get messageStream => _webSocketService.messageStream;
 
