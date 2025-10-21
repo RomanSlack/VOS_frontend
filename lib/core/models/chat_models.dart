@@ -123,14 +123,14 @@ class AgentActionStatusPayload {
   @JsonKey(name: 'agent_id')
   final String agentId;
   @JsonKey(name: 'session_id')
-  final String sessionId;
+  final String? sessionId;  // Nullable for broadcast messages
   @JsonKey(name: 'action_description')
   final String actionDescription;
   final String timestamp;
 
   const AgentActionStatusPayload({
     required this.agentId,
-    required this.sessionId,
+    this.sessionId,  // Optional for broadcast
     required this.actionDescription,
     required this.timestamp,
   });
