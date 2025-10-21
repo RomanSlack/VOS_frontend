@@ -30,15 +30,20 @@ class AppDefinition {
 class ModalInstance {
   final String appId;
   final VosModal modal;
-  ModalState state;
+  final ValueNotifier<ModalState> stateNotifier;
   final DateTime openedAt;
 
   ModalInstance({
     required this.appId,
     required this.modal,
-    this.state = ModalState.normal,
+    required this.stateNotifier,
     required this.openedAt,
   });
+
+  ModalState get state => stateNotifier.value;
+  set state(ModalState newState) {
+    stateNotifier.value = newState;
+  }
 }
 
 class VosModalManager extends ChangeNotifier {
@@ -157,9 +162,9 @@ class VosModalManager extends ChangeNotifier {
     }
 
     if (_openModals.containsKey(appId)) {
-      // Modal already open, but if it's chat and we have a message, still send it
+      // Modal already open and visible
       if (appId == 'chat' && initialMessage != null && initialMessage.isNotEmpty) {
-        // Check if this message was already added to avoid duplicates
+        // If it's chat with a message, add the message but don't minimize
         final messages = _chatManager.messages;
         final shouldAddMessage = messages.isEmpty ||
             messages.last.text != initialMessage ||
@@ -168,6 +173,9 @@ class VosModalManager extends ChangeNotifier {
         if (shouldAddMessage) {
           _chatManager.addMessage(initialMessage, true);
         }
+      } else {
+        // For other apps or chat without message, minimize the modal
+        minimizeModal(appId);
       }
       return;
     }
@@ -227,6 +235,9 @@ class VosModalManager extends ChangeNotifier {
       height = 350;
     }
 
+    // Create state notifier for this modal
+    final stateNotifier = ValueNotifier<ModalState>(ModalState.normal);
+
     final modal = VosModal(
       appIcon: icon,
       title: title,
@@ -235,14 +246,17 @@ class VosModalManager extends ChangeNotifier {
       initialPosition: _calculateModalPosition(),
       onClose: () => closeModal(appId),
       onMinimize: () => minimizeModal(appId),
+      onFullscreen: () => fullscreenModal(appId),
       statusNotifier: appId == 'chat' ? _chatStatusNotifier : null,
       isActiveNotifier: appId == 'chat' ? _chatIsActiveNotifier : null,
+      stateNotifier: stateNotifier,
       child: child,
     );
 
     _openModals[appId] = ModalInstance(
       appId: appId,
       modal: modal,
+      stateNotifier: stateNotifier,
       openedAt: DateTime.now(),
     );
 
@@ -265,6 +279,34 @@ class VosModalManager extends ChangeNotifier {
     if (instance != null) {
       instance.state = ModalState.minimized;
       _minimizedModals[appId] = instance;
+      _invalidateCache();
+      notifyListeners();
+    }
+  }
+
+  void fullscreenModal(String appId) {
+    // Check in open modals first
+    var instance = _openModals[appId];
+
+    // If not found, check minimized modals
+    if (instance == null) {
+      instance = _minimizedModals[appId];
+    }
+
+    if (instance != null) {
+      // Toggle between fullscreen and normal
+      if (instance.state == ModalState.fullscreen) {
+        instance.state = ModalState.normal;
+      } else {
+        instance.state = ModalState.fullscreen;
+      }
+
+      // If it was minimized, move it back to open
+      if (_minimizedModals.containsKey(appId)) {
+        _minimizedModals.remove(appId);
+        _openModals[appId] = instance;
+      }
+
       _invalidateCache();
       notifyListeners();
     }

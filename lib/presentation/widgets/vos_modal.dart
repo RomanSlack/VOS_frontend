@@ -16,6 +16,7 @@ class VosModal extends StatefulWidget {
   final VoidCallback? onFullscreen;
   final ValueNotifier<String?>? statusNotifier;
   final ValueNotifier<bool>? isActiveNotifier;
+  final ValueNotifier<ModalState>? stateNotifier;
 
   const VosModal({
     super.key,
@@ -30,6 +31,7 @@ class VosModal extends StatefulWidget {
     this.onFullscreen,
     this.statusNotifier,
     this.isActiveNotifier,
+    this.stateNotifier,
   });
 
   @override
@@ -73,18 +75,33 @@ class _VosModalState extends State<VosModal> {
 
   @override
   Widget build(BuildContext context) {
-    if (_state == ModalState.minimized) {
-      return const SizedBox.shrink(); // Hidden when minimized
+    // If we have a state notifier, use ValueListenableBuilder to rebuild on changes
+    if (widget.stateNotifier != null) {
+      return ValueListenableBuilder<ModalState>(
+        valueListenable: widget.stateNotifier!,
+        builder: (context, externalState, child) {
+          return _buildModal(context, externalState);
+        },
+      );
     }
+    return _buildModal(context, _state);
+  }
+
+  Widget _buildModal(BuildContext context, ModalState currentState) {
+    final isMinimized = currentState == ModalState.minimized;
 
     return Positioned(
       left: _position.dx,
       top: _position.dy,
-      child: Material(
-        color: Colors.transparent,
-        child: Container(
-          width: _state == ModalState.fullscreen ? MediaQuery.of(context).size.width - 144 : _width,
-          height: _state == ModalState.fullscreen ? MediaQuery.of(context).size.height - 48 : _height,
+      child: IgnorePointer(
+        ignoring: isMinimized,
+        child: Opacity(
+          opacity: isMinimized ? 0.0 : 1.0,
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+          width: currentState == ModalState.fullscreen ? MediaQuery.of(context).size.width - 144 : _width,
+          height: currentState == ModalState.fullscreen ? MediaQuery.of(context).size.height - 148 : _height,
           decoration: BoxDecoration(
             color: _surfaceColor,
             borderRadius: BorderRadius.circular(_borderRadius),
@@ -111,7 +128,7 @@ class _VosModalState extends State<VosModal> {
             children: [
               Column(
                 children: [
-                  _buildTitleBar(),
+                  _buildTitleBar(currentState),
                   Expanded(
                     child: ClipRRect(
                       borderRadius: const BorderRadius.only(
@@ -123,15 +140,17 @@ class _VosModalState extends State<VosModal> {
                   ),
                 ],
               ),
-              if (_state != ModalState.fullscreen) _buildResizeHandle(),
+              if (currentState != ModalState.fullscreen) _buildResizeHandle(),
             ],
+          ),
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildTitleBar() {
+  Widget _buildTitleBar(ModalState currentState) {
     return GestureDetector(
       onPanStart: _onDragStart,
       onPanUpdate: _onDragUpdate,
@@ -204,7 +223,7 @@ class _VosModalState extends State<VosModal> {
               right: 16,
               top: 0,
               bottom: 0,
-              child: _buildWindowControls(),
+              child: _buildWindowControls(currentState),
             ),
           ],
         ),
@@ -212,7 +231,7 @@ class _VosModalState extends State<VosModal> {
     );
   }
 
-  Widget _buildWindowControls() {
+  Widget _buildWindowControls(ModalState currentState) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -225,8 +244,8 @@ class _VosModalState extends State<VosModal> {
         ),
         const SizedBox(width: _iconSpacing),
         CircleIcon(
-          key: ValueKey(_state), // Only rebuild when state changes
-          icon: _state == ModalState.fullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
+          key: ValueKey(currentState), // Only rebuild when state changes
+          icon: currentState == ModalState.fullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
           size: _iconSize,
           useFontAwesome: false,
           backgroundColor: const Color(0xFF424242),
@@ -245,7 +264,8 @@ class _VosModalState extends State<VosModal> {
   }
 
   void _onDragStart(DragStartDetails details) {
-    if (_state == ModalState.fullscreen) return;
+    final currentState = widget.stateNotifier?.value ?? _state;
+    if (currentState == ModalState.fullscreen) return;
 
     _isDragging = true;
     _dragStartPosition = details.globalPosition;
@@ -253,7 +273,8 @@ class _VosModalState extends State<VosModal> {
   }
 
   void _onDragUpdate(DragUpdateDetails details) {
-    if (!_isDragging || _state == ModalState.fullscreen) return;
+    final currentState = widget.stateNotifier?.value ?? _state;
+    if (!_isDragging || currentState == ModalState.fullscreen) return;
 
     setState(() {
       final delta = details.globalPosition - _dragStartPosition;
@@ -285,17 +306,32 @@ class _VosModalState extends State<VosModal> {
   }
 
   void _onFullscreenPressed() {
-    setState(() {
-      if (_state == ModalState.fullscreen) {
-        _state = ModalState.normal;
-      } else {
-        _state = ModalState.fullscreen;
-        // Center the modal when going fullscreen
-        final screenSize = MediaQuery.of(context).size;
-        _position = Offset(112, 24); // Workspace padding
+    // If we have external state control, let the callback handle it
+    if (widget.stateNotifier != null) {
+      // Position update still needs to happen locally
+      if (widget.stateNotifier!.value != ModalState.fullscreen) {
+        setState(() {
+          // Center the modal when going fullscreen
+          final screenSize = MediaQuery.of(context).size;
+          _position = Offset(112, 24); // Workspace padding
+        });
       }
-    });
-    widget.onFullscreen?.call();
+      // Callback will update the external state
+      widget.onFullscreen?.call();
+    } else {
+      // Fallback to internal state management
+      setState(() {
+        if (_state == ModalState.fullscreen) {
+          _state = ModalState.normal;
+        } else {
+          _state = ModalState.fullscreen;
+          // Center the modal when going fullscreen
+          final screenSize = MediaQuery.of(context).size;
+          _position = Offset(112, 24); // Workspace padding
+        }
+      });
+      widget.onFullscreen?.call();
+    }
   }
 
   void _onClosePressed() {
