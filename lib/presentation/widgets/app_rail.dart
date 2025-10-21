@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:vos_app/presentation/widgets/circle_icon.dart';
 import 'package:vos_app/presentation/widgets/app_icon.dart';
+import 'package:vos_app/presentation/widgets/profile_dialog.dart';
 import 'package:vos_app/core/modal_manager.dart';
 
 class AppRail extends StatelessWidget {
@@ -122,13 +123,20 @@ class AppRail extends StatelessWidget {
           const Spacer(),
 
           // User icon at bottom with special styling
-          CircleIcon(
-            icon: Icons.person_outline,
-            size: iconSize,
-            useFontAwesome: false,
-            backgroundColor: const Color(0xFF303030),
-            borderColor: const Color(0xFF212121),
-            onPressed: () {},
+          Builder(
+            builder: (context) => CircleIcon(
+              icon: Icons.person_outline,
+              size: iconSize,
+              useFontAwesome: false,
+              backgroundColor: const Color(0xFF303030),
+              borderColor: const Color(0xFF212121),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => const ProfileDialog(),
+                );
+              },
+            ),
           ),
           const SizedBox(height: 20),
         ],

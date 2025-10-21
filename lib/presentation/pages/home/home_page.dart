@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:vos_app/presentation/widgets/app_rail.dart';
 import 'package:vos_app/presentation/widgets/input_bar.dart';
 import 'package:vos_app/presentation/widgets/workspace.dart';
 import 'package:vos_app/presentation/widgets/modal_limit_notification.dart';
+import 'package:vos_app/presentation/widgets/vos_modal.dart';
 import 'package:vos_app/core/modal_manager.dart';
-import 'package:vos_app/core/services/auth_service.dart';
-import 'package:vos_app/core/router/app_routes.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -33,15 +31,6 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     _modalManager?.dispose();
     super.dispose();
-  }
-
-  Future<void> _handleLogout(BuildContext context) async {
-    final authService = AuthService();
-    await authService.logout();
-
-    if (context.mounted) {
-      context.go(AppRoutes.login);
-    }
   }
 
   @override
@@ -74,43 +63,6 @@ class _HomePageState extends State<HomePage> {
           _OptimizedModalStack(modalManager: _modalManager!),
           // Modal limit notification
           ModalLimitNotification(modalManager: _modalManager!),
-          // Logout button in top-right corner
-          Positioned(
-            top: 16,
-            right: 16,
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => _handleLogout(context),
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF303030),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.1),
-                    ),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.logout, color: Color(0xFFFF5252), size: 18),
-                      SizedBox(width: 8),
-                      Text(
-                        'Logout',
-                        style: TextStyle(
-                          color: Color(0xFFEDEDED),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
           Align(
             alignment: Alignment.bottomCenter,
             child: InputBar(modalManager: _modalManager!),
@@ -135,10 +87,15 @@ class _OptimizedModalStack extends StatelessWidget {
       listenable: modalManager,
       builder: (context, child) {
         final openModals = modalManager.openModals;
+        final minimizedModals = modalManager.minimizedModals;
 
-        // Only rebuild when modal list actually changes
+        // Combine all modals into one list to maintain consistent keys
+        final allModals = [...openModals, ...minimizedModals];
+
+        // Render all modals with consistent keys
+        // Modals handle their own visibility based on state
         return Stack(
-          children: openModals.map((modalInstance) {
+          children: allModals.map((modalInstance) {
             return KeyedSubtree(
               key: ValueKey(modalInstance.appId),
               child: modalInstance.modal,
