@@ -540,38 +540,21 @@ class _ChatAppState extends State<ChatApp> {
   Widget _buildOverflowMenu(BuildContext context) {
     return Material(
       color: Colors.transparent,
-      child: PopupMenuButton<String>(
+      child: IconButton(
         icon: const Icon(
-          Icons.more_vert,
-          color: Color(0xFF757575),
-          size: 24,
+          Icons.delete_outline,
+          size: 20,
         ),
-        color: const Color(0xFF2D2D2D),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-          side: const BorderSide(color: Color(0xFF404040), width: 1),
+        color: const Color(0xFF757575),
+        hoverColor: const Color(0xFFFF5252).withOpacity(0.1),
+        splashColor: const Color(0xFFFF5252).withOpacity(0.2),
+        tooltip: 'Delete Conversation',
+        onPressed: () => _showDeleteConfirmationDialog(context),
+        constraints: const BoxConstraints(
+          minWidth: 36,
+          minHeight: 36,
         ),
-        offset: const Offset(0, 40),
-        onSelected: (String value) {
-          if (value == 'delete') {
-            _showDeleteConfirmationDialog(context);
-          }
-        },
-        itemBuilder: (BuildContext context) => [
-          const PopupMenuItem<String>(
-            value: 'delete',
-            child: Row(
-              children: [
-                Icon(Icons.delete_outline, color: Color(0xFFFF5252), size: 20),
-                SizedBox(width: 12),
-                Text(
-                  'Delete Conversation',
-                  style: TextStyle(color: Color(0xFFEDEDED)),
-                ),
-              ],
-            ),
-          ),
-        ],
+        padding: const EdgeInsets.all(8),
       ),
     );
   }
