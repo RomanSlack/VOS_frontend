@@ -305,6 +305,49 @@ class ChatService {
     throw Exception('Response timeout: No response received after ${_maxPollingAttempts} seconds');
   }
 
+  /// Delete conversation and agent transcript
+  ///
+  /// This deletes both:
+  /// 1. The conversation messages (user-facing chat history)
+  /// 2. The agent's transcript (agent's internal message history)
+  ///
+  /// Returns true on success, throws exception on error
+  Future<bool> deleteConversationAndTranscript({String? sessionId}) async {
+    try {
+      final session = sessionId ?? _defaultSessionId;
+
+      debugPrint('🗑️ Deleting conversation and transcript...');
+
+      // Delete conversation messages
+      final conversationResult = await _chatApi.deleteConversation(session);
+      debugPrint('✅ Conversation deleted: ${conversationResult['deleted_count']} messages');
+
+      // Delete agent transcript (with reset_system_prompt=true and clear_notifications=true)
+      final transcriptResult = await _chatApi.deleteTranscript(
+        _agentId,
+        resetSystemPrompt: true,
+        clearNotifications: true,
+      );
+      debugPrint('✅ Transcript deleted: ${transcriptResult['deleted_messages']} messages');
+
+      return true;
+
+    } on DioException catch (e) {
+      debugPrint('Error deleting conversation: ${e.message}');
+      if (e.response?.statusCode == 401) {
+        throw Exception('Authentication failed. Unable to delete conversation.');
+      } else if (e.response?.statusCode == 404) {
+        throw Exception('Conversation not found.');
+      } else if (e.response?.statusCode == 500) {
+        throw Exception('Server error while deleting conversation.');
+      }
+      throw Exception('Failed to delete conversation: ${e.message}');
+    } catch (e) {
+      debugPrint('Unexpected error deleting conversation: $e');
+      throw Exception('An unexpected error occurred while deleting: $e');
+    }
+  }
+
   /// Dispose and cleanup resources
   void dispose() {
     _messageSubscription?.cancel();

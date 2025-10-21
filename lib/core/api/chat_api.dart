@@ -25,4 +25,16 @@ abstract class ChatApi {
     @Query('limit') int? limit,
     @Query('offset') int? offset,
   });
+
+  @DELETE('/api/v1/conversations/{session_id}')
+  Future<dynamic> deleteConversation(
+    @Path('session_id') String sessionId,
+  );
+
+  @DELETE('/api/v1/transcript/{agent_id}')
+  Future<dynamic> deleteTranscript(
+    @Path('agent_id') String agentId, {
+    @Query('reset_system_prompt') bool? resetSystemPrompt,
+    @Query('clear_notifications') bool? clearNotifications,
+  });
 }

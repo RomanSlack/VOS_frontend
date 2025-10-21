@@ -521,12 +521,152 @@ class _ChatAppState extends State<ChatApp> {
                     right: 16,
                     child: _buildScrollToBottomButton(),
                   ),
+
+                // Three-dot menu (top-right)
+                if (!_isLoadingHistory && _historyError == null)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: _buildOverflowMenu(context),
+                  ),
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildOverflowMenu(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: PopupMenuButton<String>(
+        icon: const Icon(
+          Icons.more_vert,
+          color: Color(0xFF757575),
+          size: 24,
+        ),
+        color: const Color(0xFF2D2D2D),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: const BorderSide(color: Color(0xFF404040), width: 1),
+        ),
+        offset: const Offset(0, 40),
+        onSelected: (String value) {
+          if (value == 'delete') {
+            _showDeleteConfirmationDialog(context);
+          }
+        },
+        itemBuilder: (BuildContext context) => [
+          const PopupMenuItem<String>(
+            value: 'delete',
+            child: Row(
+              children: [
+                Icon(Icons.delete_outline, color: Color(0xFFFF5252), size: 20),
+                SizedBox(width: 12),
+                Text(
+                  'Delete Conversation',
+                  style: TextStyle(color: Color(0xFFEDEDED)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showDeleteConfirmationDialog(BuildContext context) async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF2D2D2D),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          title: const Text(
+            'Delete Conversation?',
+            style: TextStyle(
+              color: Color(0xFFEDEDED),
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: const Text(
+            'This will permanently delete all messages in this conversation and clear the agent\'s memory. This action cannot be undone.',
+            style: TextStyle(
+              color: Color(0xFFBDBDBD),
+              fontSize: 14,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Color(0xFF00BCD4)),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFFFF5252),
+              ),
+              child: const Text(
+                'Delete',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true && mounted) {
+      await _handleDeleteConversation();
+    }
+  }
+
+  Future<void> _handleDeleteConversation() async {
+    try {
+      // Show loading state
+      setState(() {
+        _isLoadingHistory = true;
+      });
+
+      // Delete conversation and transcript
+      await widget.chatService.deleteConversationAndTranscript();
+
+      if (!mounted) return;
+
+      // Clear local messages
+      widget.chatManager.clearMessages();
+
+      // Reset state
+      setState(() {
+        _isLoadingHistory = false;
+        _historyError = null;
+        _lastProcessedMessage = null;
+        _lastMessageCount = 0;
+      });
+
+      // Show success toast
+      ChatToast.showSuccess('Conversation deleted');
+
+      // Reload conversation history (will be empty)
+      await _loadConversationHistory();
+
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoadingHistory = false;
+      });
+
+      // Show error toast
+      ChatToast.showError('Failed to delete conversation: $e');
+    }
   }
 }
 
