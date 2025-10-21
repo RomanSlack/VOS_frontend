@@ -157,7 +157,7 @@ class _WeatherAppState extends State<WeatherApp> {
             child: Container(
               height: 44,
               decoration: BoxDecoration(
-                color: const Color(0xFF424242),
+                color: const Color(0xFF303030),
                 borderRadius: BorderRadius.circular(22),
                 border: Border.all(
                   color: Colors.white.withOpacity(0.1),
@@ -280,69 +280,83 @@ class _WeatherAppState extends State<WeatherApp> {
     final weather = _weatherData!;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Location
-          Text(
-            weather.locationDisplay,
-            style: const TextStyle(
-              color: Color(0xFFEDEDED),
-              fontSize: 28,
-              fontWeight: FontWeight.w600,
-            ),
+          // Compact header: Location + Temp + Emoji
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      weather.locationDisplay,
+                      style: const TextStyle(
+                        color: Color(0xFFEDEDED),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          weather.temperatureDisplay,
+                          style: const TextStyle(
+                            color: Color(0xFFEDEDED),
+                            fontSize: 56,
+                            fontWeight: FontWeight.bold,
+                            height: 1,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      weather.feelsLikeDisplay,
+                      style: const TextStyle(
+                        color: Color(0xFF757575),
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      weather.tempRangeDisplay,
+                      style: const TextStyle(
+                        color: Color(0xFF757575),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Column(
+                children: [
+                  Text(
+                    weather.condition.emoji,
+                    style: const TextStyle(fontSize: 64),
+                  ),
+                  Text(
+                    weather.condition.description,
+                    style: const TextStyle(
+                      color: Color(0xFFEDEDED),
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-
-          // Weather icon emoji
-          Text(
-            weather.condition.emoji,
-            style: const TextStyle(fontSize: 80),
-          ),
-          const SizedBox(height: 8),
-
-          // Temperature
-          Text(
-            weather.temperatureDisplay,
-            style: const TextStyle(
-              color: Color(0xFFEDEDED),
-              fontSize: 72,
-              fontWeight: FontWeight.bold,
-              height: 1,
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          // Feels like & description
-          Text(
-            weather.feelsLikeDisplay,
-            style: const TextStyle(
-              color: Color(0xFF757575),
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            weather.condition.description,
-            style: const TextStyle(
-              color: Color(0xFFEDEDED),
-              fontSize: 18,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            weather.tempRangeDisplay,
-            style: const TextStyle(
-              color: Color(0xFF757575),
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 20),
 
           // Details grid
           _buildDetailsGrid(weather),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
 
           // Last updated
           Text(
@@ -361,13 +375,13 @@ class _WeatherAppState extends State<WeatherApp> {
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF303030),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: Colors.white.withOpacity(0.05),
           width: 1,
         ),
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       child: Column(
         children: [
           Row(
@@ -379,7 +393,7 @@ class _WeatherAppState extends State<WeatherApp> {
                   weather.atmosphere.humidity,
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Expanded(
                 child: _buildDetailItem(
                   Icons.air,
@@ -389,7 +403,7 @@ class _WeatherAppState extends State<WeatherApp> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
@@ -399,7 +413,7 @@ class _WeatherAppState extends State<WeatherApp> {
                   weather.atmosphere.pressure,
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Expanded(
                 child: _buildDetailItem(
                   Icons.visibility,
@@ -409,7 +423,7 @@ class _WeatherAppState extends State<WeatherApp> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
@@ -419,27 +433,10 @@ class _WeatherAppState extends State<WeatherApp> {
                   weather.cloudiness,
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Expanded(
-                child: _buildDetailItem(
-                  Icons.wb_sunny,
-                  'Sunrise',
-                  weather.sunrise,
-                ),
+                child: _buildSunriseSunsetItem(weather.sunrise, weather.sunset),
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _buildDetailItem(
-                  Icons.nights_stay,
-                  'Sunset',
-                  weather.sunset,
-                ),
-              ),
-              const Spacer(),
             ],
           ),
         ],
@@ -449,10 +446,10 @@ class _WeatherAppState extends State<WeatherApp> {
 
   Widget _buildDetailItem(IconData icon, String label, String value) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: const Color(0xFF424242),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: Colors.white.withOpacity(0.05),
           width: 1,
@@ -465,25 +462,70 @@ class _WeatherAppState extends State<WeatherApp> {
             children: [
               Icon(
                 icon,
-                size: 16,
+                size: 14,
                 color: const Color(0xFF00BCD4),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               Text(
                 label,
                 style: const TextStyle(
                   color: Color(0xFF757575),
-                  fontSize: 12,
+                  fontSize: 11,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 3),
           Text(
             value,
             style: const TextStyle(
               color: Color(0xFFEDEDED),
-              fontSize: 16,
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSunriseSunsetItem(String sunrise, String sunset) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF424242),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.05),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.wb_twilight,
+                size: 14,
+                color: Color(0xFF00BCD4),
+              ),
+              const SizedBox(width: 4),
+              const Text(
+                'Sunrise/Sunset',
+                style: TextStyle(
+                  color: Color(0xFF757575),
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 3),
+          Text(
+            '$sunrise / $sunset',
+            style: const TextStyle(
+              color: Color(0xFFEDEDED),
+              fontSize: 15,
               fontWeight: FontWeight.w500,
             ),
           ),
