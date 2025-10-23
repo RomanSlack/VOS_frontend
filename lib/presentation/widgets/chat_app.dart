@@ -853,23 +853,28 @@ class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble>
       ),
       items: [
         PopupMenuItem(
+          height: 36,
           onTap: _copyToClipboard,
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 Icons.copy,
-                size: 18,
+                size: 14,
                 color: const Color(0xFF00BCD4),
               ),
-              const SizedBox(width: 12),
-              const Text('Copy'),
+              const SizedBox(width: 8),
+              const Text(
+                'Copy',
+                style: TextStyle(fontSize: 13),
+              ),
             ],
           ),
         ),
       ],
       color: const Color(0xFF2D2D2D),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         side: BorderSide(
           color: Colors.white.withOpacity(0.1),
           width: 1,
@@ -1004,45 +1009,46 @@ class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble>
             ),
           Flexible(
             child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
               onSecondaryTapDown: (details) => _showContextMenu(context, details),
               child: MouseRegion(
-                onEnter: (_) => setState(() => _isHovered = true),
-                onExit: (_) => setState(() => _isHovered = false),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _getBubbleColor(),
-                    borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(16),
-                      topRight: const Radius.circular(16),
-                      bottomLeft: const Radius.circular(16),
-                      bottomRight: Radius.circular(widget.showAvatar ? 4 : 16),
+                  onEnter: (_) => setState(() => _isHovered = true),
+                  onExit: (_) => setState(() => _isHovered = false),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
                     ),
-                    border: Border.all(
-                      color: _isHovered
-                          ? const Color(0xFF00BCD4).withOpacity(0.7)
-                          : _getBorderColor(),
-                      width: 1,
+                    decoration: BoxDecoration(
+                      color: _getBubbleColor(),
+                      borderRadius: BorderRadius.only(
+                        topLeft: const Radius.circular(16),
+                        topRight: const Radius.circular(16),
+                        bottomLeft: const Radius.circular(16),
+                        bottomRight: Radius.circular(widget.showAvatar ? 4 : 16),
+                      ),
+                      border: Border.all(
+                        color: _isHovered
+                            ? const Color(0xFF00BCD4).withOpacity(0.7)
+                            : _getBorderColor(),
+                        width: 1,
+                      ),
+                      boxShadow: _isHovered
+                          ? [
+                              BoxShadow(
+                                color: const Color(0xFF00BCD4).withOpacity(0.2),
+                                blurRadius: 8,
+                                spreadRadius: 1,
+                              ),
+                            ]
+                          : null,
                     ),
-                    boxShadow: _isHovered
-                        ? [
-                            BoxShadow(
-                              color: const Color(0xFF00BCD4).withOpacity(0.2),
-                              blurRadius: 8,
-                              spreadRadius: 1,
-                            ),
-                          ]
-                        : null,
+                    child: _buildMessageContent(),
                   ),
-                  child: _buildMessageContent(),
                 ),
               ),
             ),
-          ),
           if (widget.showAvatar)
             Container(
               width: 32,
@@ -1103,44 +1109,45 @@ class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 GestureDetector(
+                  behavior: HitTestBehavior.opaque,
                   onSecondaryTapDown: (details) => _showContextMenu(context, details),
                   child: MouseRegion(
-                    onEnter: (_) => setState(() => _isHovered = true),
-                    onExit: (_) => setState(() => _isHovered = false),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _getBubbleColor(),
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(widget.showAvatar ? 4 : 16),
-                          topRight: const Radius.circular(16),
-                          bottomLeft: const Radius.circular(16),
-                          bottomRight: const Radius.circular(16),
+                      onEnter: (_) => setState(() => _isHovered = true),
+                      onExit: (_) => setState(() => _isHovered = false),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
                         ),
-                        border: Border.all(
-                          color: _isHovered
-                              ? const Color(0xFF00BCD4).withOpacity(0.3)
-                              : _getBorderColor(),
-                          width: 1,
+                        decoration: BoxDecoration(
+                          color: _getBubbleColor(),
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(widget.showAvatar ? 4 : 16),
+                            topRight: const Radius.circular(16),
+                            bottomLeft: const Radius.circular(16),
+                            bottomRight: const Radius.circular(16),
+                          ),
+                          border: Border.all(
+                            color: _isHovered
+                                ? const Color(0xFF00BCD4).withOpacity(0.3)
+                                : _getBorderColor(),
+                            width: 1,
+                          ),
+                          boxShadow: _isHovered
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.white.withOpacity(0.05),
+                                    blurRadius: 8,
+                                    spreadRadius: 1,
+                                  ),
+                                ]
+                              : null,
                         ),
-                        boxShadow: _isHovered
-                            ? [
-                                BoxShadow(
-                                  color: Colors.white.withOpacity(0.05),
-                                  blurRadius: 8,
-                                  spreadRadius: 1,
-                                ),
-                              ]
-                            : null,
+                        child: _buildMessageContent(),
                       ),
-                      child: _buildMessageContent(),
                     ),
                   ),
-                ),
                 if (widget.showTimestamp)
                   Padding(
                     padding: const EdgeInsets.only(left: 16, top: 4),
