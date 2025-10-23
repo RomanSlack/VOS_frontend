@@ -26,13 +26,13 @@ class WebSocketMessage {
 class WebSocketConnectedData {
   @JsonKey(name: 'session_id')
   final String sessionId;
-  final String message;
+  final String? message;
   @JsonKey(name: 'pending_notifications')
   final int pendingNotifications;
 
   const WebSocketConnectedData({
     required this.sessionId,
-    required this.message,
+    this.message,
     this.pendingNotifications = 0,
   });
 

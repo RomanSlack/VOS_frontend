@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:vos_app/core/models/chat_models.dart';
+import 'package:vos_app/core/config/app_config.dart';
 
 enum WebSocketConnectionState {
   disconnected,
@@ -33,8 +34,6 @@ class WebSocketService {
   Stream<WebSocketConnectionState> get stateStream => _stateController.stream;
   WebSocketConnectionState get state => _state;
 
-  static const String _baseUrl = 'localhost:8000';
-
   String? _currentSessionId;
   String? _jwtToken;
   StreamSubscription? _messageSubscription;
@@ -61,11 +60,12 @@ class WebSocketService {
     try {
       _updateState(WebSocketConnectionState.connecting);
 
-      // Build WebSocket URL with JWT token if available
-      final tokenParam = _jwtToken != null ? 'token=$_jwtToken' : '';
-      final uri = Uri.parse(
-        'ws://$_baseUrl/api/v1/ws/conversations/$_currentSessionId/stream?$tokenParam'
+      // Build WebSocket URL using config (supports both ws:// and wss://)
+      final wsUrl = AppConfig.getWebSocketUrl(
+        _currentSessionId!,
+        _jwtToken ?? '',
       );
+      final uri = Uri.parse(wsUrl);
 
       debugPrint('🔌 Connecting to WebSocket: $uri');
 

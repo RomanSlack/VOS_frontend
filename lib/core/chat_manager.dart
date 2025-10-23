@@ -88,9 +88,25 @@ class ChatManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  void loadMessages(List<ChatMessage> messages) {
+  void loadMessages(List<ChatMessage> messages, {List<ChatMessage>? pendingMessages}) {
     _messages.clear();
     _messages.addAll(messages);
+
+    // Append pending messages that aren't duplicates
+    if (pendingMessages != null) {
+      for (final pendingMsg in pendingMessages) {
+        final isDuplicate = _messages.any((m) =>
+          m.text == pendingMsg.text &&
+          m.isUser == pendingMsg.isUser &&
+          m.timestamp.difference(pendingMsg.timestamp).abs().inSeconds < 5
+        );
+
+        if (!isDuplicate) {
+          _messages.add(pendingMsg);
+        }
+      }
+    }
+
     notifyListeners();
   }
 

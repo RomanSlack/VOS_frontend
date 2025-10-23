@@ -7,13 +7,13 @@ import 'package:vos_app/core/models/chat_models.dart';
 import 'package:vos_app/core/chat_manager.dart';
 import 'package:vos_app/core/services/websocket_service.dart';
 import 'package:vos_app/core/services/auth_service.dart';
+import 'package:vos_app/core/config/app_config.dart';
 
 class ChatService {
   late final ChatApi _chatApi;
   late final Dio _dio;
   late final WebSocketService _webSocketService;
 
-  static const String _apiKey = 'dev-key-12345';
   static const String _agentId = 'primary_agent';
   static const String _defaultSessionId = 'user_session_default';
 
@@ -27,13 +27,15 @@ class ChatService {
   bool _useWebSocket = true; // Toggle to enable/disable WebSocket
 
   ChatService() {
-    _dio = Dio();
+    _dio = Dio(BaseOptions(
+      baseUrl: AppConfig.apiBaseUrl,
+    ));
 
     // Add API key authentication interceptor
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
-          options.headers['X-API-Key'] = _apiKey;
+          options.headers['X-API-Key'] = AppConfig.apiKey;
           return handler.next(options);
         },
       ),
@@ -48,7 +50,7 @@ class ChatService {
       ));
     }
 
-    _chatApi = ChatApi(_dio);
+    _chatApi = ChatApi(_dio, baseUrl: AppConfig.apiBaseUrl);
     _webSocketService = WebSocketService();
   }
 
@@ -261,7 +263,7 @@ class ChatService {
         throw Exception('Server error. Please check if the VOS API server is running properly.');
       } else if (e.type == DioExceptionType.connectionTimeout ||
                  e.type == DioExceptionType.connectionError) {
-        throw Exception('Cannot connect to VOS server. Please ensure the server is running on localhost:8000');
+        throw Exception('Cannot connect to VOS server at ${AppConfig.apiBaseUrl}');
       }
       throw Exception('Chat request failed: ${e.message}');
     } catch (e) {
@@ -305,30 +307,57 @@ class ChatService {
     throw Exception('Response timeout: No response received after ${_maxPollingAttempts} seconds');
   }
 
-  /// Delete conversation and agent transcript
+  /// Delete conversation and all agent transcripts
   ///
   /// This deletes both:
   /// 1. The conversation messages (user-facing chat history)
-  /// 2. The agent's transcript (agent's internal message history)
+  /// 2. All agents' transcripts (all agents' internal message histories)
   ///
   /// Returns true on success, throws exception on error
   Future<bool> deleteConversationAndTranscript({String? sessionId}) async {
     try {
       final session = sessionId ?? _defaultSessionId;
 
-      debugPrint('🗑️ Deleting conversation and transcript...');
+      debugPrint('🗑️ Deleting conversation and all agent transcripts...');
 
       // Delete conversation messages
       final conversationResult = await _chatApi.deleteConversation(session);
       debugPrint('✅ Conversation deleted: ${conversationResult['deleted_count']} messages');
 
-      // Delete agent transcript (with reset_system_prompt=true and clear_notifications=true)
-      final transcriptResult = await _chatApi.deleteTranscript(
-        _agentId,
-        resetSystemPrompt: true,
-        clearNotifications: true,
-      );
-      debugPrint('✅ Transcript deleted: ${transcriptResult['deleted_messages']} messages');
+      // Get all agents from the backend
+      final agentsResponse = await _chatApi.getAllAgents();
+
+      // Handle response - backend returns array directly, not wrapped in object
+      final List<dynamic> agents = agentsResponse is List
+          ? agentsResponse
+          : (agentsResponse is Map && agentsResponse.containsKey('agents')
+              ? agentsResponse['agents']
+              : []);
+
+      debugPrint('📋 Found ${agents.length} agents to delete transcripts for');
+
+      // Delete transcript for each agent
+      int totalDeletedMessages = 0;
+      for (final agent in agents) {
+        final agentId = agent['agent_id'] ?? agent['id'];
+        if (agentId != null) {
+          try {
+            final transcriptResult = await _chatApi.deleteTranscript(
+              agentId,
+              resetSystemPrompt: true,
+              clearNotifications: true,
+            );
+            final deletedCount = transcriptResult['deleted_messages'] ?? 0;
+            totalDeletedMessages += deletedCount as int;
+            debugPrint('✅ Deleted transcript for agent "$agentId": $deletedCount messages');
+          } catch (e) {
+            debugPrint('⚠️ Failed to delete transcript for agent "$agentId": $e');
+            // Continue with other agents even if one fails
+          }
+        }
+      }
+
+      debugPrint('✅ All transcripts deleted: $totalDeletedMessages total messages');
 
       return true;
 

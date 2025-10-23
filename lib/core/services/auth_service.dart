@@ -1,9 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:vos_app/core/config/app_config.dart';
 
 class AuthService {
-  static const String _baseUrl = 'http://localhost:8000';
   static const String _tokenKey = 'jwt_token';
   static const String _expiryKey = 'token_expiry';
   static const String _usernameKey = 'username';
@@ -13,7 +13,17 @@ class AuthService {
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
 
-  AuthService._internal();
+  AuthService._internal() {
+    // Add API key authentication interceptor
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          options.headers['X-API-Key'] = AppConfig.apiKey;
+          return handler.next(options);
+        },
+      ),
+    );
+  }
 
   final Dio _dio = Dio();
   String? _cachedToken;
@@ -22,7 +32,7 @@ class AuthService {
   Future<String> login(String username, String password, {bool rememberMe = true}) async {
     try {
       final response = await _dio.post(
-        '$_baseUrl/api/v1/auth/login',
+        '${AppConfig.apiBaseUrl}/api/v1/auth/login',
         data: {
           'username': username,
           'password': password,
@@ -53,7 +63,7 @@ class AuthService {
         throw Exception('Invalid username or password');
       } else if (e.type == DioExceptionType.connectionTimeout ||
                  e.type == DioExceptionType.connectionError) {
-        throw Exception('Cannot connect to server. Please ensure the VOS backend is running on localhost:8000');
+        throw Exception('Cannot connect to server at ${AppConfig.apiBaseUrl}');
       }
 
       throw Exception('Login failed: ${e.message}');

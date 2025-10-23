@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_linkify/flutter_linkify.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -67,9 +68,14 @@ class _ChatAppState extends State<ChatApp> {
 
     // Subscribe to agent status updates (for animation control)
     widget.chatService.statusStream.listen((statusPayload) {
-      final isThinking = statusPayload.processingState?.toLowerCase() == 'thinking';
-      final isExecuting = statusPayload.processingState?.toLowerCase() == 'executing_tools';
+      final state = statusPayload.processingState?.toLowerCase();
+      final isThinking = state == 'thinking';
+      final isExecuting = state == 'executing_tools';
+
       widget.isActiveNotifier.value = isThinking || isExecuting;
+
+      // Keep status message visible even when agent goes idle
+      // so users can see the last action that was performed
     });
 
     // Subscribe to connection state changes
@@ -111,10 +117,17 @@ class _ChatAppState extends State<ChatApp> {
     });
 
     try {
+      // Preserve any pending messages before loading history
+      final pendingMessages = widget.chatManager.messages
+          .where((m) => m.status == MessageStatus.sending)
+          .toList();
+
       final messages = await widget.chatService.loadConversationHistory();
       if (mounted) {
-        widget.chatManager.loadMessages(messages);
-        _lastMessageCount = messages.length;
+        // Load messages and preserve pending ones
+        widget.chatManager.loadMessages(messages, pendingMessages: pendingMessages);
+
+        _lastMessageCount = widget.chatManager.messages.length;
         setState(() {
           _isLoadingHistory = false;
         });
@@ -194,11 +207,19 @@ class _ChatAppState extends State<ChatApp> {
     final totalItems = _processMessagesWithDates(widget.chatManager.messages).length;
     if (totalItems == 0) return;
 
-    _itemScrollController.scrollTo(
-      index: totalItems - 1,
-      duration: animate ? const Duration(milliseconds: 400) : Duration.zero,
-      curve: Curves.easeOutCubic,
-    );
+    // Check if scroll controller is attached before scrolling
+    try {
+      if (_itemScrollController.isAttached) {
+        _itemScrollController.scrollTo(
+          index: totalItems - 1,
+          duration: animate ? const Duration(milliseconds: 400) : const Duration(milliseconds: 1),
+          curve: Curves.easeOutCubic,
+        );
+      }
+    } catch (e) {
+      // Scroll controller not ready yet, ignore
+      debugPrint('Scroll controller not ready: $e');
+    }
   }
 
   void _checkForNewUserMessage() {
@@ -302,6 +323,23 @@ class _ChatAppState extends State<ChatApp> {
     // Time gap > 5 minutes
     final timeDiff = current.timestamp.difference(previous.timestamp);
     if (timeDiff.inMinutes > 5) return true;
+
+    return false;
+  }
+
+  bool _shouldShowTimestamp(int index, List<ChatMessage> messages) {
+    // Always show timestamp for the last message
+    if (index == messages.length - 1) return true;
+
+    final current = messages[index];
+    final next = messages[index + 1];
+
+    // Different sender
+    if (current.isUser != next.isUser) return true;
+
+    // Time gap > 2 minutes
+    final timeDiff = next.timestamp.difference(current.timestamp);
+    if (timeDiff.inMinutes >= 2) return true;
 
     return false;
   }
@@ -506,6 +544,7 @@ class _ChatAppState extends State<ChatApp> {
                                 key: ValueKey(item.message.id),
                                 message: item.message,
                                 showAvatar: _shouldShowAvatar(messageIndex, messages),
+                                showTimestamp: _shouldShowTimestamp(messageIndex, messages),
                               ),
                             ],
                           );
@@ -668,11 +707,13 @@ class _MessageWithDate {
 class _AnimatedMessageBubble extends StatefulWidget {
   final ChatMessage message;
   final bool showAvatar;
+  final bool showTimestamp;
 
   const _AnimatedMessageBubble({
     super.key,
     required this.message,
     required this.showAvatar,
+    this.showTimestamp = true,
   });
 
   @override
@@ -773,10 +814,68 @@ class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble>
   }
 
   bool _containsMarkdown(String text) {
-    return text.contains('```') ||
-        text.contains('**') ||
-        text.contains('##') ||
-        (text.contains('[') && text.contains(']('));
+    // Check for common markdown patterns
+    return text.contains('```') ||           // Code blocks
+        text.contains('**') ||                // Bold
+        text.contains('*') ||                 // Italic or bold
+        text.contains('_') ||                 // Italic or bold
+        text.contains('`') ||                 // Inline code
+        text.contains('##') ||                // Headers
+        text.contains('#') ||                 // Headers
+        text.contains('- ') ||                // Unordered lists
+        text.contains('* ') ||                // Unordered lists
+        RegExp(r'^\d+\. ').hasMatch(text) ||  // Ordered lists
+        text.contains('> ') ||                // Blockquotes
+        (text.contains('[') && text.contains('](')); // Links
+  }
+
+  void _copyToClipboard() async {
+    await Clipboard.setData(ClipboardData(text: widget.message.text));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Message copied to clipboard'),
+          duration: Duration(seconds: 1),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  void _showContextMenu(BuildContext context, TapDownDetails details) {
+    final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+
+    showMenu(
+      context: context,
+      position: RelativeRect.fromRect(
+        details.globalPosition & const Size(1, 1),
+        Offset.zero & overlay.size,
+      ),
+      items: [
+        PopupMenuItem(
+          onTap: _copyToClipboard,
+          child: Row(
+            children: [
+              Icon(
+                Icons.copy,
+                size: 18,
+                color: const Color(0xFF00BCD4),
+              ),
+              const SizedBox(width: 12),
+              const Text('Copy'),
+            ],
+          ),
+        ),
+      ],
+      color: const Color(0xFF2D2D2D),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(
+          color: Colors.white.withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+    );
   }
 
   Widget _buildMessageContent() {
@@ -837,7 +936,7 @@ class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble>
         },
       );
     } else {
-      return Linkify(
+      return SelectableLinkify(
         onOpen: (link) async {
           final uri = Uri.parse(link.url);
           if (await canLaunchUrl(uri)) {
@@ -883,60 +982,64 @@ class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble>
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           // Status icon and timestamp
-          Padding(
-            padding: const EdgeInsets.only(right: 8, bottom: 4),
-            child: Row(
-              children: [
-                _buildStatusIcon(),
-                const SizedBox(width: 4),
-                Tooltip(
-                  message: TimestampFormatter.formatFullTimestamp(widget.message.timestamp),
-                  child: Text(
-                    TimestampFormatter.formatRelativeTime(widget.message.timestamp),
-                    style: const TextStyle(
-                      color: Color(0xFF757575),
-                      fontSize: 10,
+          if (widget.showTimestamp)
+            Padding(
+              padding: const EdgeInsets.only(right: 8, bottom: 4),
+              child: Row(
+                children: [
+                  _buildStatusIcon(),
+                  const SizedBox(width: 4),
+                  Tooltip(
+                    message: TimestampFormatter.formatFullTimestamp(widget.message.timestamp),
+                    child: Text(
+                      TimestampFormatter.formatRelativeTime(widget.message.timestamp),
+                      style: const TextStyle(
+                        color: Color(0xFF757575),
+                        fontSize: 10,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
           Flexible(
-            child: MouseRegion(
-              onEnter: (_) => setState(() => _isHovered = true),
-              onExit: (_) => setState(() => _isHovered = false),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: _getBubbleColor(),
-                  borderRadius: BorderRadius.only(
-                    topLeft: const Radius.circular(16),
-                    topRight: const Radius.circular(16),
-                    bottomLeft: const Radius.circular(16),
-                    bottomRight: Radius.circular(widget.showAvatar ? 4 : 16),
+            child: GestureDetector(
+              onSecondaryTapDown: (details) => _showContextMenu(context, details),
+              child: MouseRegion(
+                onEnter: (_) => setState(() => _isHovered = true),
+                onExit: (_) => setState(() => _isHovered = false),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
                   ),
-                  border: Border.all(
-                    color: _isHovered
-                        ? const Color(0xFF00BCD4).withOpacity(0.7)
-                        : _getBorderColor(),
-                    width: 1,
+                  decoration: BoxDecoration(
+                    color: _getBubbleColor(),
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(16),
+                      topRight: const Radius.circular(16),
+                      bottomLeft: const Radius.circular(16),
+                      bottomRight: Radius.circular(widget.showAvatar ? 4 : 16),
+                    ),
+                    border: Border.all(
+                      color: _isHovered
+                          ? const Color(0xFF00BCD4).withOpacity(0.7)
+                          : _getBorderColor(),
+                      width: 1,
+                    ),
+                    boxShadow: _isHovered
+                        ? [
+                            BoxShadow(
+                              color: const Color(0xFF00BCD4).withOpacity(0.2),
+                              blurRadius: 8,
+                              spreadRadius: 1,
+                            ),
+                          ]
+                        : null,
                   ),
-                  boxShadow: _isHovered
-                      ? [
-                          BoxShadow(
-                            color: const Color(0xFF00BCD4).withOpacity(0.2),
-                            blurRadius: 8,
-                            spreadRadius: 1,
-                          ),
-                        ]
-                      : null,
+                  child: _buildMessageContent(),
                 ),
-                child: _buildMessageContent(),
               ),
             ),
           ),
@@ -999,55 +1102,59 @@ class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                MouseRegion(
-                  onEnter: (_) => setState(() => _isHovered = true),
-                  onExit: (_) => setState(() => _isHovered = false),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _getBubbleColor(),
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(widget.showAvatar ? 4 : 16),
-                        topRight: const Radius.circular(16),
-                        bottomLeft: const Radius.circular(16),
-                        bottomRight: const Radius.circular(16),
+                GestureDetector(
+                  onSecondaryTapDown: (details) => _showContextMenu(context, details),
+                  child: MouseRegion(
+                    onEnter: (_) => setState(() => _isHovered = true),
+                    onExit: (_) => setState(() => _isHovered = false),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
                       ),
-                      border: Border.all(
-                        color: _isHovered
-                            ? const Color(0xFF00BCD4).withOpacity(0.3)
-                            : _getBorderColor(),
-                        width: 1,
+                      decoration: BoxDecoration(
+                        color: _getBubbleColor(),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(widget.showAvatar ? 4 : 16),
+                          topRight: const Radius.circular(16),
+                          bottomLeft: const Radius.circular(16),
+                          bottomRight: const Radius.circular(16),
+                        ),
+                        border: Border.all(
+                          color: _isHovered
+                              ? const Color(0xFF00BCD4).withOpacity(0.3)
+                              : _getBorderColor(),
+                          width: 1,
+                        ),
+                        boxShadow: _isHovered
+                            ? [
+                                BoxShadow(
+                                  color: Colors.white.withOpacity(0.05),
+                                  blurRadius: 8,
+                                  spreadRadius: 1,
+                                ),
+                              ]
+                            : null,
                       ),
-                      boxShadow: _isHovered
-                          ? [
-                              BoxShadow(
-                                color: Colors.white.withOpacity(0.05),
-                                blurRadius: 8,
-                                spreadRadius: 1,
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: _buildMessageContent(),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16, top: 4),
-                  child: Tooltip(
-                    message: TimestampFormatter.formatFullTimestamp(widget.message.timestamp),
-                    child: Text(
-                      TimestampFormatter.formatRelativeTime(widget.message.timestamp),
-                      style: const TextStyle(
-                        color: Color(0xFF757575),
-                        fontSize: 10,
-                      ),
+                      child: _buildMessageContent(),
                     ),
                   ),
                 ),
+                if (widget.showTimestamp)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16, top: 4),
+                    child: Tooltip(
+                      message: TimestampFormatter.formatFullTimestamp(widget.message.timestamp),
+                      child: Text(
+                        TimestampFormatter.formatRelativeTime(widget.message.timestamp),
+                        style: const TextStyle(
+                          color: Color(0xFF757575),
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),

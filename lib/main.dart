@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:vos_app/app.dart';
 import 'package:vos_app/core/di/injection.dart';
+import 'package:vos_app/core/config/app_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment configuration
+  await AppConfig.initialize();
 
   // Configure dependency injection
   await configureDependencies();

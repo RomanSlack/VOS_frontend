@@ -301,49 +301,6 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                     ),
                   ),
-                  const SizedBox(height: 24),
-
-                  // Dev credentials hint
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF303030),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.05),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
-                          'Development Credentials:',
-                          style: TextStyle(
-                            color: Color(0xFF757575),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Username: admin',
-                          style: TextStyle(
-                            color: Color(0xFF757575),
-                            fontSize: 12,
-                            fontFamily: 'monospace',
-                          ),
-                        ),
-                        Text(
-                          'Password: admin123',
-                          style: TextStyle(
-                            color: Color(0xFF757575),
-                            fontSize: 12,
-                            fontFamily: 'monospace',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 ],
               ),
             ),

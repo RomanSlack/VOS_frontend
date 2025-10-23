@@ -2,21 +2,22 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:vos_app/core/api/weather_api.dart';
 import 'package:vos_app/core/models/weather_models.dart';
+import 'package:vos_app/core/config/app_config.dart';
 
 class WeatherService {
   late final WeatherApi _weatherApi;
   late final Dio _dio;
 
-  static const String _apiKey = 'dev-key-12345';
-
   WeatherService() {
-    _dio = Dio();
+    _dio = Dio(BaseOptions(
+      baseUrl: AppConfig.apiBaseUrl,
+    ));
 
     // Add API key authentication interceptor
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
-          options.headers['X-API-Key'] = _apiKey;
+          options.headers['X-API-Key'] = AppConfig.apiKey;
           return handler.next(options);
         },
       ),
@@ -31,7 +32,7 @@ class WeatherService {
       ));
     }
 
-    _weatherApi = WeatherApi(_dio);
+    _weatherApi = WeatherApi(_dio, baseUrl: AppConfig.apiBaseUrl);
   }
 
   /// Search for weather by city name
@@ -58,7 +59,7 @@ class WeatherService {
         throw Exception('Server error. Please check if the weather service is running properly.');
       } else if (e.type == DioExceptionType.connectionTimeout ||
                  e.type == DioExceptionType.connectionError) {
-        throw Exception('Cannot connect to weather server. Please ensure the server is running on localhost:8000');
+        throw Exception('Cannot connect to weather server at ${AppConfig.apiBaseUrl}');
       }
       throw Exception('Unable to fetch weather. Please try again.');
     } catch (e) {

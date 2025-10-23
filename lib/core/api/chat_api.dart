@@ -4,9 +4,9 @@ import 'package:vos_app/core/models/chat_models.dart';
 
 part 'chat_api.g.dart';
 
-@RestApi(baseUrl: 'http://localhost:8000')
+@RestApi(baseUrl: '')
 abstract class ChatApi {
-  factory ChatApi(Dio dio) = _ChatApi;
+  factory ChatApi(Dio dio, {String? baseUrl}) = _ChatApi;
 
   @POST('/api/v1/chat')
   Future<VosMessageResponseDto> sendMessage(@Body() VosMessageRequestDto request);
@@ -37,4 +37,7 @@ abstract class ChatApi {
     @Query('reset_system_prompt') bool? resetSystemPrompt,
     @Query('clear_notifications') bool? clearNotifications,
   });
+
+  @GET('/api/v1/agents')
+  Future<dynamic> getAllAgents();
 }
