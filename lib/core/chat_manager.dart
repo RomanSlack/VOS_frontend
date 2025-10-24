@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
@@ -37,23 +38,40 @@ class ChatManager extends ChangeNotifier {
     // Start with empty messages - will be loaded from conversation history
   }
 
-  void addMessage(String text, bool isUser) {
+  void addMessage(
+    String text,
+    bool isUser, {
+    String inputMode = 'text',
+    int? voiceMessageId,
+    String? audioFilePath,
+    int? audioDurationMs,
+  }) {
     _messages.add(ChatMessage(
       text: text,
       isUser: isUser,
       timestamp: DateTime.now(),
       status: MessageStatus.received,
+      inputMode: inputMode,
+      voiceMessageId: voiceMessageId,
+      audioFilePath: audioFilePath,
+      audioDurationMs: audioDurationMs,
     ));
     notifyListeners();
   }
 
   // Add optimistic message (user message before server confirmation)
-  String addOptimisticMessage(String text) {
+  String addOptimisticMessage(
+    String text, {
+    String inputMode = 'text',
+    VoiceMetadata? voiceMetadata,
+  }) {
     final message = ChatMessage(
       text: text,
       isUser: true,
       timestamp: DateTime.now(),
       status: MessageStatus.sending,
+      inputMode: inputMode,
+      voiceMetadata: voiceMetadata,
     );
     _messages.add(message);
     notifyListeners();
@@ -69,6 +87,21 @@ class ChatManager extends ChangeNotifier {
         errorMessage: errorMessage,
       );
       notifyListeners();
+    }
+  }
+
+  // Attach audio file to the most recent AI message
+  void attachAudioToLatestAIMessage(String audioFilePath, {int? audioDurationMs}) {
+    // Find the last AI message
+    for (int i = _messages.length - 1; i >= 0; i--) {
+      if (!_messages[i].isUser && _messages[i].audioFilePath == null) {
+        _messages[i] = _messages[i].copyWith(
+          audioFilePath: audioFilePath,
+          audioDurationMs: audioDurationMs,
+        );
+        notifyListeners();
+        return;
+      }
     }
   }
 
@@ -160,6 +193,11 @@ class ChatMessage {
   final DateTime timestamp;
   final MessageStatus status;
   final String? errorMessage;
+  final String inputMode; // 'text' or 'voice'
+  final VoiceMetadata? voiceMetadata;
+  final int? voiceMessageId; // Backend voice message ID
+  final String? audioFilePath; // For AI voice responses (relative path from backend)
+  final int? audioDurationMs; // Audio duration in milliseconds
 
   ChatMessage({
     String? id,
@@ -168,6 +206,11 @@ class ChatMessage {
     required this.timestamp,
     this.status = MessageStatus.received,
     this.errorMessage,
+    this.inputMode = 'text',
+    this.voiceMetadata,
+    this.voiceMessageId,
+    this.audioFilePath,
+    this.audioDurationMs,
   }) : id = id ?? const Uuid().v4();
 
   // Add copyWith for status updates
@@ -177,6 +220,11 @@ class ChatMessage {
     DateTime? timestamp,
     MessageStatus? status,
     String? errorMessage,
+    String? inputMode,
+    VoiceMetadata? voiceMetadata,
+    int? voiceMessageId,
+    String? audioFilePath,
+    int? audioDurationMs,
   }) {
     return ChatMessage(
       id: this.id,
@@ -185,6 +233,34 @@ class ChatMessage {
       timestamp: timestamp ?? this.timestamp,
       status: status ?? this.status,
       errorMessage: errorMessage ?? this.errorMessage,
+      inputMode: inputMode ?? this.inputMode,
+      voiceMetadata: voiceMetadata ?? this.voiceMetadata,
+      voiceMessageId: voiceMessageId ?? this.voiceMessageId,
+      audioFilePath: audioFilePath ?? this.audioFilePath,
+      audioDurationMs: audioDurationMs ?? this.audioDurationMs,
     );
+  }
+}
+
+class VoiceMetadata {
+  final String? sessionId;
+  final double? confidence;
+  final int? audioDurationMs;
+  final String? model;
+
+  const VoiceMetadata({
+    this.sessionId,
+    this.confidence,
+    this.audioDurationMs,
+    this.model,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (sessionId != null) 'session_id': sessionId,
+      if (confidence != null) 'transcription_confidence': confidence,
+      if (audioDurationMs != null) 'audio_duration_ms': audioDurationMs,
+      if (model != null) 'model': model,
+    };
   }
 }

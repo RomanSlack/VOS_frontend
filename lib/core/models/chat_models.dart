@@ -75,21 +75,36 @@ class NewMessagePayload {
   @JsonKey(name: 'session_id')
   final String sessionId;
   @JsonKey(name: 'message_id')
-  final int messageId;
+  final int? messageId;  // Made nullable to handle missing message_id
   @JsonKey(name: 'agent_id')
   final String agentId;
   final String content;
   @JsonKey(name: 'content_type')
   final String? contentType;
   final String timestamp;
+  @JsonKey(name: 'input_mode')
+  final String? inputMode; // "text" or "voice"
+  @JsonKey(name: 'voice_message_id')
+  final int? voiceMessageId;
+  @JsonKey(name: 'audio_file_path')
+  final String? audioFilePath;
+  @JsonKey(name: 'audio_url')
+  final String? audioUrl;
+  @JsonKey(name: 'audio_duration_ms')
+  final int? audioDurationMs;
 
   const NewMessagePayload({
     required this.sessionId,
-    required this.messageId,
+    this.messageId,  // No longer required
     required this.agentId,
     required this.content,
     this.contentType,
     required this.timestamp,
+    this.inputMode,
+    this.voiceMessageId,
+    this.audioFilePath,
+    this.audioUrl,
+    this.audioDurationMs,
   });
 
   factory NewMessagePayload.fromJson(Map<String, dynamic> json) =>
@@ -270,6 +285,16 @@ class ConversationMessageDto {
   final String content;
   final String timestamp;
   final Map<String, dynamic>? metadata;
+  @JsonKey(name: 'input_mode')
+  final String? inputMode; // "text" or "voice"
+  @JsonKey(name: 'voice_message_id')
+  final int? voiceMessageId;
+  @JsonKey(name: 'audio_file_path')
+  final String? audioFilePath;
+  @JsonKey(name: 'audio_url')
+  final String? audioUrl;
+  @JsonKey(name: 'audio_duration_ms')
+  final int? audioDurationMs;
 
   const ConversationMessageDto({
     required this.id,
@@ -279,6 +304,11 @@ class ConversationMessageDto {
     required this.content,
     required this.timestamp,
     this.metadata,
+    this.inputMode,
+    this.voiceMessageId,
+    this.audioFilePath,
+    this.audioUrl,
+    this.audioDurationMs,
   });
 
   factory ConversationMessageDto.fromJson(Map<String, dynamic> json) =>

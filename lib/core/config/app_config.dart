@@ -63,4 +63,9 @@ class AppConfig {
   static String getWebSocketUrl(String sessionId, String token) {
     return '$wsBaseUrl/api/v1/ws/conversations/$sessionId/stream?token=$token';
   }
+
+  /// Get the full WebSocket URL for voice mode
+  static String getVoiceWebSocketUrl(String sessionId) {
+    return '$wsBaseUrl/ws/voice/$sessionId';
+  }
 }

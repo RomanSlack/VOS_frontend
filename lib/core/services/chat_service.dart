@@ -72,11 +72,37 @@ class ChatService {
         _messageSubscription?.cancel();
         _messageSubscription = _webSocketService.messageStream.listen(
           (payload) {
+            // DEBUG: Log full payload to see what we're receiving
+            debugPrint('📦 WebSocket payload received:');
+            debugPrint('  - sessionId: ${payload.sessionId}');
+            debugPrint('  - agentId: ${payload.agentId}');
+            debugPrint('  - messageId: ${payload.messageId}');
+            debugPrint('  - inputMode: ${payload.inputMode}');
+            debugPrint('  - voiceMessageId: ${payload.voiceMessageId}');
+            debugPrint('  - audioUrl: ${payload.audioUrl}');
+            debugPrint('  - audioDurationMs: ${payload.audioDurationMs}');
+
             // Parse the content to extract actual message
             final actualMessage = _parseMessageContent(payload.content);
 
-            // Add agent message to chat
-            chatManager.addMessage(actualMessage, false);
+            // Build full audio URL if provided (backend returns relative path)
+            String? fullAudioUrl;
+            if (payload.audioUrl != null) {
+              fullAudioUrl = '${AppConfig.apiBaseUrl}${payload.audioUrl}';
+              debugPrint('🎵 Message includes audio: $fullAudioUrl');
+            } else {
+              debugPrint('⚠️ No audio URL in payload');
+            }
+
+            // Add agent message to chat with audio metadata
+            chatManager.addMessage(
+              actualMessage,
+              false,
+              inputMode: payload.inputMode ?? 'text',
+              voiceMessageId: payload.voiceMessageId,
+              audioFilePath: fullAudioUrl,
+              audioDurationMs: payload.audioDurationMs,
+            );
             debugPrint('💬 Added message from ${payload.agentId}');
           },
           onError: (error) {
@@ -206,10 +232,20 @@ class ChatService {
           timestamp = DateTime.now();
         }
 
+        // Build full audio URL if available (backend returns relative path)
+        String? fullAudioUrl;
+        if (msg.audioUrl != null) {
+          fullAudioUrl = '${AppConfig.apiBaseUrl}${msg.audioUrl}';
+        }
+
         messages.add(ChatMessage(
           text: messageText,
           isUser: isUser,
           timestamp: timestamp,
+          inputMode: msg.inputMode ?? 'text',
+          voiceMessageId: msg.voiceMessageId,
+          audioFilePath: fullAudioUrl, // Store full URL for playback
+          audioDurationMs: msg.audioDurationMs,
         ));
       }
 

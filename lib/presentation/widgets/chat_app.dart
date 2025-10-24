@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_linkify/flutter_linkify.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -13,6 +14,7 @@ import 'package:vos_app/core/services/chat_service.dart';
 import 'package:vos_app/core/services/websocket_service.dart';
 import 'package:vos_app/utils/timestamp_formatter.dart';
 import 'package:vos_app/utils/chat_toast.dart';
+import 'package:vos_app/presentation/widgets/audio_player_widget.dart';
 
 class ChatApp extends StatefulWidget {
   final ChatManager chatManager;
@@ -73,6 +75,22 @@ class _ChatAppState extends State<ChatApp> {
       final isExecuting = state == 'executing_tools';
 
       widget.isActiveNotifier.value = isThinking || isExecuting;
+
+      // When agent starts thinking, it means it received the user's message
+      // Update status of any pending voice messages to "sent"
+      if (isThinking) {
+        final messages = widget.chatManager.messages;
+        for (int i = messages.length - 1; i >= 0; i--) {
+          final msg = messages[i];
+          if (msg.isUser &&
+              msg.inputMode == 'voice' &&
+              msg.status == MessageStatus.sending) {
+            widget.chatManager.updateMessageStatus(msg.id, MessageStatus.sent);
+            debugPrint('✅ Updated voice message status to sent: ${msg.id}');
+            break; // Only update the most recent one
+          }
+        }
+      }
 
       // Keep status message visible even when agent goes idle
       // so users can see the last action that was performed
@@ -231,6 +249,14 @@ class _ChatAppState extends State<ChatApp> {
           lastMessage.text.isNotEmpty &&
           !lastMessage.text.startsWith("Hello! I'm your AI assistant")) {
         _lastProcessedMessage = lastMessage.text;
+
+        // Skip triggering AI response for voice messages
+        // They're already sent through the voice WebSocket to voice_gateway
+        if (lastMessage.inputMode == 'voice') {
+          debugPrint('⏭️ Skipping AI trigger for voice message (already sent via voice WebSocket)');
+          return;
+        }
+
         _triggerAIResponse(lastMessage);
       }
     }
@@ -976,6 +1002,8 @@ class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble>
   }
 
   Widget _buildUserMessage() {
+    final isVoiceMessage = widget.message.inputMode == 'voice';
+
     return Padding(
       padding: EdgeInsets.only(
         bottom: widget.showAvatar ? 16 : 8,
@@ -992,6 +1020,15 @@ class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble>
               padding: const EdgeInsets.only(right: 8, bottom: 4),
               child: Row(
                 children: [
+                  // Voice indicator
+                  if (isVoiceMessage) ...[
+                    const Icon(
+                      Icons.mic,
+                      size: 12,
+                      color: Color(0xFF00BCD4),
+                    ),
+                    const SizedBox(width: 4),
+                  ],
                   _buildStatusIcon(),
                   const SizedBox(width: 4),
                   Tooltip(
@@ -1076,6 +1113,8 @@ class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble>
   }
 
   Widget _buildAIMessage() {
+    final hasAudio = widget.message.audioFilePath != null;
+
     return Padding(
       padding: EdgeInsets.only(
         bottom: widget.showAvatar ? 16 : 8,
@@ -1144,7 +1183,21 @@ class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble>
                                 ]
                               : null,
                         ),
-                        child: _buildMessageContent(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Audio player (if available)
+                            if (hasAudio) ...[
+                              AudioPlayerWidget(
+                                audioFilePath: widget.message.audioFilePath!,
+                                autoPlay: false,
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                            // Message content
+                            _buildMessageContent(),
+                          ],
+                        ),
                       ),
                     ),
                   ),

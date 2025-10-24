@@ -6,6 +6,7 @@ import 'package:vos_app/core/services/auth_service.dart';
 import 'package:vos_app/presentation/pages/home/home_page.dart';
 import 'package:vos_app/presentation/pages/splash/splash_page.dart';
 import 'package:vos_app/presentation/pages/login/login_page.dart';
+import 'package:vos_app/features/voice/pages/voice_test_page.dart';
 
 @lazySingleton
 class AppRouter {
@@ -52,6 +53,11 @@ class AppRouter {
           path: AppRoutes.home,
           name: AppRoutes.home,
           builder: (context, state) => const HomePage(),
+        ),
+        GoRoute(
+          path: AppRoutes.voiceTest,
+          name: AppRoutes.voiceTest,
+          builder: (context, state) => const VoiceTestPage(),
         ),
       ],
       errorBuilder: (context, state) => _ErrorPage(error: state.error),
