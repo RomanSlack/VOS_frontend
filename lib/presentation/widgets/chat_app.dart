@@ -751,7 +751,6 @@ class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble>
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
-  bool _isHovered = false;
 
   @override
   void initState() {
@@ -1048,43 +1047,14 @@ class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble>
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onSecondaryTapDown: (details) => _showContextMenu(context, details),
-              child: MouseRegion(
-                  onEnter: (_) => setState(() => _isHovered = true),
-                  onExit: (_) => setState(() => _isHovered = false),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _getBubbleColor(),
-                      borderRadius: BorderRadius.only(
-                        topLeft: const Radius.circular(16),
-                        topRight: const Radius.circular(16),
-                        bottomLeft: const Radius.circular(16),
-                        bottomRight: Radius.circular(widget.showAvatar ? 4 : 16),
-                      ),
-                      border: Border.all(
-                        color: _isHovered
-                            ? const Color(0xFF00BCD4).withOpacity(0.7)
-                            : _getBorderColor(),
-                        width: 1,
-                      ),
-                      boxShadow: _isHovered
-                          ? [
-                              BoxShadow(
-                                color: const Color(0xFF00BCD4).withOpacity(0.2),
-                                blurRadius: 8,
-                                spreadRadius: 1,
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: _buildMessageContent(),
-                  ),
-                ),
+              child: _HoverableMessageBubble(
+                isUser: true,
+                showAvatar: widget.showAvatar,
+                bubbleColor: _getBubbleColor(),
+                borderColor: _getBorderColor(),
+                child: _buildMessageContent(),
               ),
+            ),
             ),
           if (widget.showAvatar)
             Container(
@@ -1150,57 +1120,28 @@ class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble>
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onSecondaryTapDown: (details) => _showContextMenu(context, details),
-                  child: MouseRegion(
-                      onEnter: (_) => setState(() => _isHovered = true),
-                      onExit: (_) => setState(() => _isHovered = false),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _getBubbleColor(),
-                          borderRadius: BorderRadius.only(
-                            topLeft: Radius.circular(widget.showAvatar ? 4 : 16),
-                            topRight: const Radius.circular(16),
-                            bottomLeft: const Radius.circular(16),
-                            bottomRight: const Radius.circular(16),
+                  child: _HoverableMessageBubble(
+                    isUser: false,
+                    showAvatar: widget.showAvatar,
+                    bubbleColor: _getBubbleColor(),
+                    borderColor: _getBorderColor(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Audio player (if available)
+                        if (hasAudio) ...[
+                          AudioPlayerWidget(
+                            audioFilePath: widget.message.audioFilePath!,
+                            autoPlay: false,
                           ),
-                          border: Border.all(
-                            color: _isHovered
-                                ? const Color(0xFF00BCD4).withOpacity(0.3)
-                                : _getBorderColor(),
-                            width: 1,
-                          ),
-                          boxShadow: _isHovered
-                              ? [
-                                  BoxShadow(
-                                    color: Colors.white.withOpacity(0.05),
-                                    blurRadius: 8,
-                                    spreadRadius: 1,
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Audio player (if available)
-                            if (hasAudio) ...[
-                              AudioPlayerWidget(
-                                audioFilePath: widget.message.audioFilePath!,
-                                autoPlay: false,
-                              ),
-                              const SizedBox(height: 8),
-                            ],
-                            // Message content
-                            _buildMessageContent(),
-                          ],
-                        ),
-                      ),
+                          const SizedBox(height: 8),
+                        ],
+                        // Message content
+                        _buildMessageContent(),
+                      ],
                     ),
                   ),
+                ),
                 if (widget.showTimestamp)
                   Padding(
                     padding: const EdgeInsets.only(left: 16, top: 4),
@@ -1219,6 +1160,78 @@ class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble>
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Optimized hoverable message bubble that manages its own hover state
+/// to prevent rebuilding the entire message widget on mouse movement
+class _HoverableMessageBubble extends StatefulWidget {
+  final bool isUser;
+  final bool showAvatar;
+  final Color bubbleColor;
+  final Color borderColor;
+  final Widget child;
+
+  const _HoverableMessageBubble({
+    required this.isUser,
+    required this.showAvatar,
+    required this.bubbleColor,
+    required this.borderColor,
+    required this.child,
+  });
+
+  @override
+  State<_HoverableMessageBubble> createState() => _HoverableMessageBubbleState();
+}
+
+class _HoverableMessageBubbleState extends State<_HoverableMessageBubble> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: widget.isUser ? 10 : 12,
+        ),
+        decoration: BoxDecoration(
+          color: widget.bubbleColor,
+          borderRadius: widget.isUser
+              ? BorderRadius.only(
+                  topLeft: const Radius.circular(16),
+                  topRight: const Radius.circular(16),
+                  bottomLeft: const Radius.circular(16),
+                  bottomRight: Radius.circular(widget.showAvatar ? 4 : 16),
+                )
+              : BorderRadius.only(
+                  topLeft: Radius.circular(widget.showAvatar ? 4 : 16),
+                  topRight: const Radius.circular(16),
+                  bottomLeft: const Radius.circular(16),
+                  bottomRight: const Radius.circular(16),
+                ),
+          border: Border.all(
+            color: _isHovered
+                ? const Color(0xFF00BCD4).withOpacity(0.7)
+                : widget.borderColor,
+            width: 1,
+          ),
+          boxShadow: _isHovered
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF00BCD4).withOpacity(0.2),
+                    blurRadius: 8,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : null,
+        ),
+        child: widget.child,
       ),
     );
   }

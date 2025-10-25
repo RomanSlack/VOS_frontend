@@ -58,13 +58,13 @@ class VoiceService {
       baseUrl: AppConfig.voiceApiBaseUrl,
     ));
 
-    // Debug logging
-    if (kDebugMode) {
-      _dio.interceptors.add(LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-      ));
-    }
+    // Logging disabled for performance - re-enable only when debugging specific issues
+    // if (kDebugMode) {
+    //   _dio.interceptors.add(LogInterceptor(
+    //     requestBody: false,
+    //     responseBody: false,
+    //   ));
+    // }
 
     _voiceApi = VoiceApi(_dio, baseUrl: AppConfig.voiceApiBaseUrl);
   }

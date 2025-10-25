@@ -41,14 +41,14 @@ class ChatService {
       ),
     );
 
-    // Add logging in debug mode
-    if (kDebugMode) {
-      _dio.interceptors.add(LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        logPrint: (obj) => debugPrint(obj.toString()),
-      ));
-    }
+    // Logging disabled for performance - re-enable only when debugging specific issues
+    // if (kDebugMode) {
+    //   _dio.interceptors.add(LogInterceptor(
+    //     requestBody: false,  // Disable body logging for performance
+    //     responseBody: false,
+    //     logPrint: (obj) => debugPrint(obj.toString()),
+    //   ));
+    // }
 
     _chatApi = ChatApi(_dio, baseUrl: AppConfig.apiBaseUrl);
     _webSocketService = WebSocketService();
@@ -72,15 +72,15 @@ class ChatService {
         _messageSubscription?.cancel();
         _messageSubscription = _webSocketService.messageStream.listen(
           (payload) {
-            // DEBUG: Log full payload to see what we're receiving
-            debugPrint('📦 WebSocket payload received:');
-            debugPrint('  - sessionId: ${payload.sessionId}');
-            debugPrint('  - agentId: ${payload.agentId}');
-            debugPrint('  - messageId: ${payload.messageId}');
-            debugPrint('  - inputMode: ${payload.inputMode}');
-            debugPrint('  - voiceMessageId: ${payload.voiceMessageId}');
-            debugPrint('  - audioUrl: ${payload.audioUrl}');
-            debugPrint('  - audioDurationMs: ${payload.audioDurationMs}');
+            // Verbose logging disabled for performance
+            // debugPrint('📦 WebSocket payload received:');
+            // debugPrint('  - sessionId: ${payload.sessionId}');
+            // debugPrint('  - agentId: ${payload.agentId}');
+            // debugPrint('  - messageId: ${payload.messageId}');
+            // debugPrint('  - inputMode: ${payload.inputMode}');
+            // debugPrint('  - voiceMessageId: ${payload.voiceMessageId}');
+            // debugPrint('  - audioUrl: ${payload.audioUrl}');
+            // debugPrint('  - audioDurationMs: ${payload.audioDurationMs}');
 
             // Parse the content to extract actual message
             final actualMessage = _parseMessageContent(payload.content);

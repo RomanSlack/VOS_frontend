@@ -44,6 +44,10 @@ class _VosModalState extends State<VosModal> {
   late Offset _position;
   ModalState _state = ModalState.normal;
 
+  // Use ValueNotifiers for drag/resize to avoid rebuilding entire modal
+  late final ValueNotifier<Offset> _positionNotifier;
+  late final ValueNotifier<Size> _sizeNotifier;
+
   // For dragging
   Offset _dragStartPosition = Offset.zero;
   Offset _dragStartOffset = Offset.zero;
@@ -71,6 +75,15 @@ class _VosModalState extends State<VosModal> {
     _width = widget.initialWidth;
     _height = widget.initialHeight;
     _position = widget.initialPosition;
+    _positionNotifier = ValueNotifier(_position);
+    _sizeNotifier = ValueNotifier(Size(_width, _height));
+  }
+
+  @override
+  void dispose() {
+    _positionNotifier.dispose();
+    _sizeNotifier.dispose();
+    super.dispose();
   }
 
   @override
@@ -90,19 +103,29 @@ class _VosModalState extends State<VosModal> {
   Widget _buildModal(BuildContext context, ModalState currentState) {
     final isMinimized = currentState == ModalState.minimized;
 
-    return Positioned(
-      left: _position.dx,
-      top: _position.dy,
+    // Use ValueListenableBuilder to only rebuild position/size on drag/resize
+    return ValueListenableBuilder<Offset>(
+      valueListenable: _positionNotifier,
+      builder: (context, position, child) {
+        return Positioned(
+          left: position.dx,
+          top: position.dy,
+          child: child!,
+        );
+      },
       child: IgnorePointer(
         ignoring: isMinimized,
         child: Opacity(
           opacity: isMinimized ? 0.0 : 1.0,
-          child: Material(
-            color: Colors.transparent,
-            child: Container(
-          width: currentState == ModalState.fullscreen ? MediaQuery.of(context).size.width - 144 : _width,
-          height: currentState == ModalState.fullscreen ? MediaQuery.of(context).size.height - 148 : _height,
-          decoration: BoxDecoration(
+          child: ValueListenableBuilder<Size>(
+            valueListenable: _sizeNotifier,
+            builder: (context, size, child) {
+              return Material(
+                color: Colors.transparent,
+                child: Container(
+                  width: currentState == ModalState.fullscreen ? MediaQuery.of(context).size.width - 144 : size.width,
+                  height: currentState == ModalState.fullscreen ? MediaQuery.of(context).size.height - 148 : size.height,
+                  decoration: BoxDecoration(
             color: _surfaceColor,
             borderRadius: BorderRadius.circular(_borderRadius),
             boxShadow: [
@@ -126,10 +149,20 @@ class _VosModalState extends State<VosModal> {
           ),
           child: Stack(
             children: [
-              Column(
-                children: [
-                  _buildTitleBar(currentState),
-                  Expanded(
+              // Wrap content in RepaintBoundary to isolate child repaints from resize handle
+              child!,
+              if (currentState != ModalState.fullscreen) _buildResizeHandle(),
+            ],
+                  ),
+                ),
+              );
+            },
+            // Static child to avoid rebuilding on size changes
+            child: Column(
+              children: [
+                _buildTitleBar(currentState),
+                Expanded(
+                  child: RepaintBoundary(
                     child: ClipRRect(
                       borderRadius: const BorderRadius.only(
                         bottomLeft: Radius.circular(_borderRadius),
@@ -138,11 +171,8 @@ class _VosModalState extends State<VosModal> {
                       child: widget.child,
                     ),
                   ),
-                ],
-              ),
-              if (currentState != ModalState.fullscreen) _buildResizeHandle(),
-            ],
-          ),
+                ),
+              ],
             ),
           ),
         ),
@@ -276,22 +306,24 @@ class _VosModalState extends State<VosModal> {
     final currentState = widget.stateNotifier?.value ?? _state;
     if (!_isDragging || currentState == ModalState.fullscreen) return;
 
-    setState(() {
-      final delta = details.globalPosition - _dragStartPosition;
-      _position = _dragStartOffset + delta;
+    // Use ValueNotifier instead of setState for smooth drag without rebuilding children
+    final delta = details.globalPosition - _dragStartPosition;
+    _position = _dragStartOffset + delta;
 
-      // Keep modal within workspace bounds
-      final screenSize = MediaQuery.of(context).size;
-      final workspaceLeft = 112.0; // AppRail width + margins
-      final workspaceRight = screenSize.width - 16.0;
-      final workspaceTop = 0.0;
-      final workspaceBottom = screenSize.height - 100.0; // Above input bar
+    // Keep modal within workspace bounds
+    final screenSize = MediaQuery.of(context).size;
+    final workspaceLeft = 112.0; // AppRail width + margins
+    final workspaceRight = screenSize.width - 16.0;
+    final workspaceTop = 0.0;
+    final workspaceBottom = screenSize.height - 100.0; // Above input bar
 
-      _position = Offset(
-        _position.dx.clamp(workspaceLeft, workspaceRight - _width),
-        _position.dy.clamp(workspaceTop, workspaceBottom - _height),
-      );
-    });
+    _position = Offset(
+      _position.dx.clamp(workspaceLeft, workspaceRight - _width),
+      _position.dy.clamp(workspaceTop, workspaceBottom - _height),
+    );
+
+    // Update notifier to trigger only position rebuild
+    _positionNotifier.value = _position;
   }
 
   void _onDragEnd(DragEndDetails details) {
@@ -376,19 +408,21 @@ class _VosModalState extends State<VosModal> {
   void _onResizeUpdate(DragUpdateDetails details) {
     if (!_isResizing) return;
 
-    setState(() {
-      final delta = details.globalPosition - _resizeStartPosition;
-      _width = (_resizeStartWidth + delta.dx).clamp(_minWidth, double.infinity);
-      _height = (_resizeStartHeight + delta.dy).clamp(_minHeight, double.infinity);
+    // Use ValueNotifier instead of setState for smooth resize without rebuilding children
+    final delta = details.globalPosition - _resizeStartPosition;
+    _width = (_resizeStartWidth + delta.dx).clamp(_minWidth, double.infinity);
+    _height = (_resizeStartHeight + delta.dy).clamp(_minHeight, double.infinity);
 
-      // Ensure modal doesn't go beyond workspace bounds
-      final screenSize = MediaQuery.of(context).size;
-      final maxWidth = screenSize.width - _position.dx - 16;
-      final maxHeight = screenSize.height - _position.dy - 100;
+    // Ensure modal doesn't go beyond workspace bounds
+    final screenSize = MediaQuery.of(context).size;
+    final maxWidth = screenSize.width - _position.dx - 16;
+    final maxHeight = screenSize.height - _position.dy - 100;
 
-      _width = _width.clamp(_minWidth, maxWidth);
-      _height = _height.clamp(_minHeight, maxHeight);
-    });
+    _width = _width.clamp(_minWidth, maxWidth);
+    _height = _height.clamp(_minHeight, maxHeight);
+
+    // Update notifier to trigger only size rebuild
+    _sizeNotifier.value = Size(_width, _height);
   }
 
   void _onResizeEnd(DragEndDetails details) {
@@ -477,51 +511,66 @@ class _AnimatedTitleIconState extends State<_AnimatedTitleIcon>
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) {
-        setState(() => _isHovered = true);
-        _controller.forward();
-      },
-      onExit: (_) {
-        setState(() => _isHovered = false);
-        _controller.reverse();
-      },
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, child) {
-          return Transform.scale(
-            scale: _scaleAnimation.value,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Icon (always visible)
-                Icon(
-                  widget.icon,
-                  size: 20,
-                  color: const Color(0xFFEDEDED),
-                ),
-                // Title (slides in on hover)
-                ClipRect(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    widthFactor: _slideAnimation.value,
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: Text(
-                        widget.title,
-                        style: const TextStyle(
-                          color: Color(0xFFEDEDED),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+    // RepaintBoundary isolates animation from parent
+    return RepaintBoundary(
+      child: MouseRegion(
+        onEnter: (_) {
+          if (!_isHovered) {
+            setState(() => _isHovered = true);
+            _controller.forward();
+          }
+        },
+        onExit: (_) {
+          if (_isHovered) {
+            setState(() => _isHovered = false);
+            _controller.reverse();
+          }
+        },
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            return Transform.scale(
+              scale: _scaleAnimation.value,
+              child: child,
+            );
+          },
+          // Static child to avoid rebuilding icon/text
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Icon (always visible)
+              Icon(
+                widget.icon,
+                size: 20,
+                color: const Color(0xFFEDEDED),
+              ),
+              // Title (slides in on hover)
+              AnimatedBuilder(
+                animation: _slideAnimation,
+                builder: (context, child) {
+                  return ClipRect(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      widthFactor: _slideAnimation.value,
+                      child: child,
+                    ),
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Text(
+                    widget.title,
+                    style: const TextStyle(
+                      color: Color(0xFFEDEDED),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
-              ],
-            ),
-          );
-        },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

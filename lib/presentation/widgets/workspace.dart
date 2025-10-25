@@ -8,9 +8,12 @@ class Workspace extends StatelessWidget {
     return Positioned.fill(
       left: 112, // AppRail width (80) + margin (16) * 2
       right: 16, // Matching app rail margin
-      child: CustomPaint(
-        painter: GridPainter(),
-        child: const SizedBox.expand(),
+      // RepaintBoundary prevents grid from repainting when modals move
+      child: RepaintBoundary(
+        child: CustomPaint(
+          painter: GridPainter(),
+          child: const SizedBox.expand(),
+        ),
       ),
     );
   }

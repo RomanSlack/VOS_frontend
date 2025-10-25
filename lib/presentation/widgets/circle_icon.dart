@@ -32,7 +32,7 @@ class _CircleIconState extends State<CircleIcon> with SingleTickerProviderStateM
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 150),
+      duration: const Duration(milliseconds: 80),
       vsync: this,
     );
     _scaleAnimation = Tween<double>(
@@ -40,7 +40,7 @@ class _CircleIconState extends State<CircleIcon> with SingleTickerProviderStateM
       end: 1.1,
     ).animate(CurvedAnimation(
       parent: _controller,
-      curve: Curves.easeInOut,
+      curve: Curves.easeOut,
     ));
   }
 
@@ -52,64 +52,80 @@ class _CircleIconState extends State<CircleIcon> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) {
-        setState(() => _isHovered = true);
-        _controller.forward();
-      },
-      onExit: (_) {
-        setState(() => _isHovered = false);
-        _controller.reverse();
-      },
-      child: AnimatedBuilder(
-        animation: _scaleAnimation,
-        builder: (context, child) {
-          return Transform.scale(
-            scale: _scaleAnimation.value,
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: widget.onPressed,
-                borderRadius: BorderRadius.circular(widget.size / 2),
-                child: Container(
-                  width: widget.size,
-                  height: widget.size,
-                  decoration: BoxDecoration(
-                    color: widget.backgroundColor ?? const Color(0xFF424242),
-                    shape: BoxShape.circle,
-                    border: widget.borderColor != null
-                        ? Border.all(
-                            color: widget.borderColor!,
-                            width: 2,
-                          )
-                        : null,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(_isHovered ? 0.3 : 0.2),
-                        offset: Offset(0, _isHovered ? 3 : 2),
-                        blurRadius: _isHovered ? 6 : 4,
-                        spreadRadius: 0,
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: widget.useFontAwesome
-                        ? FaIcon(
-                            widget.icon,
-                            size: widget.size * 0.5,
-                            color: const Color(0xFFEDEDED),
-                          )
-                        : Icon(
-                            widget.icon,
-                            size: widget.size * 0.5,
-                            color: const Color(0xFFEDEDED),
-                          ),
-                  ),
+    // RepaintBoundary isolates this widget's repaints from parent
+    return RepaintBoundary(
+      child: MouseRegion(
+        onEnter: (_) {
+          // Only setState if needed to trigger animation
+          if (!_isHovered) {
+            setState(() => _isHovered = true);
+            _controller.forward();
+          }
+        },
+        onExit: (_) {
+          if (_isHovered) {
+            setState(() => _isHovered = false);
+            _controller.reverse();
+          }
+        },
+        child: AnimatedBuilder(
+          animation: _scaleAnimation,
+          builder: (context, child) {
+            return Transform.scale(
+              scale: _scaleAnimation.value,
+              child: child,
+            );
+          },
+          // Static child to avoid rebuilding on every animation frame
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: widget.onPressed,
+              borderRadius: BorderRadius.circular(widget.size / 2),
+              child: AnimatedBuilder(
+                animation: _controller,
+                builder: (context, child) {
+                  return Container(
+                    width: widget.size,
+                    height: widget.size,
+                    decoration: BoxDecoration(
+                      color: widget.backgroundColor ?? const Color(0xFF424242),
+                      shape: BoxShape.circle,
+                      border: widget.borderColor != null
+                          ? Border.all(
+                              color: widget.borderColor!,
+                              width: 2,
+                            )
+                          : null,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(_isHovered ? 0.3 : 0.2),
+                          offset: Offset(0, _isHovered ? 3 : 2),
+                          blurRadius: _isHovered ? 6 : 4,
+                          spreadRadius: 0,
+                        ),
+                      ],
+                    ),
+                    child: child,
+                  );
+                },
+                child: Center(
+                  child: widget.useFontAwesome
+                      ? FaIcon(
+                          widget.icon,
+                          size: widget.size * 0.5,
+                          color: const Color(0xFFEDEDED),
+                        )
+                      : Icon(
+                          widget.icon,
+                          size: widget.size * 0.5,
+                          color: const Color(0xFFEDEDED),
+                        ),
                 ),
               ),
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }
