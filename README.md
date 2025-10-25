@@ -144,3 +144,11 @@ flutter run -d chrome --dart-define=FLUTTER_WEB_USE_SKIA=false  # HTML
 ---
 
 **Built with Flutter** | **Experience the future of virtual operating systems**
+
+
+flutter pub run build_runner build --delete-conflicting-outputs
+flutter build web
+flutter run -d web-server --web-port=8090
+
+Username: admin / Password: admin123
+Username: user1 / Password: password1
