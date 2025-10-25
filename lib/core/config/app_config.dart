@@ -3,7 +3,9 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 /// Application configuration loaded from environment files
 class AppConfig {
   static late String apiBaseUrl;
+  static late String voiceApiBaseUrl;
   static late String wsBaseUrl;
+  static late String voiceWsBaseUrl;
   static late String apiKey;
   static late bool enableAnalytics;
   static late bool enableCrashlytics;
@@ -26,7 +28,9 @@ class AppConfig {
 
     // API Configuration
     apiBaseUrl = dotenv.env['API_BASE_URL'] ?? 'https://api.jarvos.dev';
+    voiceApiBaseUrl = dotenv.env['VOICE_API_BASE_URL'] ?? apiBaseUrl;
     wsBaseUrl = dotenv.env['WS_BASE_URL'] ?? _deriveWsUrl(apiBaseUrl);
+    voiceWsBaseUrl = dotenv.env['VOICE_WS_BASE_URL'] ?? _deriveWsUrl(voiceApiBaseUrl);
     apiKey = dotenv.env['API_KEY'] ?? 'dev-key-12345';
 
     // Feature Flags
@@ -41,7 +45,9 @@ class AppConfig {
 
     print('🔧 AppConfig initialized:');
     print('  API Base URL: $apiBaseUrl');
+    print('  Voice API Base URL: $voiceApiBaseUrl');
     print('  WS Base URL: $wsBaseUrl');
+    print('  Voice WS Base URL: $voiceWsBaseUrl');
     print('  Production Mode: $isProduction');
   }
 
@@ -66,6 +72,6 @@ class AppConfig {
 
   /// Get the full WebSocket URL for voice mode
   static String getVoiceWebSocketUrl(String sessionId) {
-    return '$wsBaseUrl/ws/voice/$sessionId';
+    return '$voiceWsBaseUrl/ws/voice/$sessionId';
   }
 }

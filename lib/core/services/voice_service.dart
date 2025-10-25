@@ -55,7 +55,7 @@ class VoiceService {
 
   void _initializeDio() {
     _dio = Dio(BaseOptions(
-      baseUrl: AppConfig.apiBaseUrl,
+      baseUrl: AppConfig.voiceApiBaseUrl,
     ));
 
     // Debug logging
@@ -66,7 +66,7 @@ class VoiceService {
       ));
     }
 
-    _voiceApi = VoiceApi(_dio, baseUrl: AppConfig.apiBaseUrl);
+    _voiceApi = VoiceApi(_dio, baseUrl: AppConfig.voiceApiBaseUrl);
   }
 
   // Stream controllers for broadcasting events
