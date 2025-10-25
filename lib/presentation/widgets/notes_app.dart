@@ -118,9 +118,10 @@ class _NotesAppState extends State<NotesApp> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFF212121),
-      child: Column(
+    return RepaintBoundary(
+      child: Container(
+        color: const Color(0xFF212121),
+        child: Column(
         children: [
           // Header with title and actions
           _buildHeader(),
@@ -133,6 +134,7 @@ class _NotesAppState extends State<NotesApp> {
           // Status bar
           _buildStatusBar(),
         ],
+        ),
       ),
     );
   }

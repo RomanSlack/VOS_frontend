@@ -15,9 +15,10 @@ class _CalendarAppState extends State<CalendarApp> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFF212121),
-      child: Column(
+    return RepaintBoundary(
+      child: Container(
+        color: const Color(0xFF212121),
+        child: Column(
         children: [
           // Header with month/year navigation
           _buildHeader(),
@@ -36,6 +37,7 @@ class _CalendarAppState extends State<CalendarApp> {
             child: _buildSelectedDateInfo(),
           ),
         ],
+        ),
       ),
     );
   }

@@ -48,6 +48,10 @@ class _ChatAppState extends State<ChatApp> {
   WebSocketConnectionState _connectionState = WebSocketConnectionState.connected;
   StreamSubscription? _connectionStateSubscription;
 
+  // Cache processed messages to avoid expensive recalculation on every build
+  List<_MessageWithDate>? _cachedProcessedMessages;
+  int _cachedMessageCount = 0;
+
   @override
   void initState() {
     super.initState();
@@ -311,6 +315,11 @@ class _ChatAppState extends State<ChatApp> {
   }
 
   List<_MessageWithDate> _processMessagesWithDates(List<ChatMessage> messages) {
+    // Return cached result if message count hasn't changed
+    if (_cachedProcessedMessages != null && _cachedMessageCount == messages.length) {
+      return _cachedProcessedMessages!;
+    }
+
     final List<_MessageWithDate> result = [];
     DateTime? lastDate;
 
@@ -333,6 +342,10 @@ class _ChatAppState extends State<ChatApp> {
         result.add(_MessageWithDate(message: message));
       }
     }
+
+    // Cache the result
+    _cachedProcessedMessages = result;
+    _cachedMessageCount = messages.length;
 
     return result;
   }
@@ -547,36 +560,42 @@ class _ChatAppState extends State<ChatApp> {
                     ),
                   )
                 else
-                  ListenableBuilder(
-                    listenable: widget.chatManager,
-                    builder: (context, child) {
-                      final messages = widget.chatManager.messages;
-                      final processedMessages = _processMessagesWithDates(messages);
+                  // RepaintBoundary isolates message list from modal drag/resize
+                  RepaintBoundary(
+                    child: ListenableBuilder(
+                      listenable: widget.chatManager,
+                      builder: (context, child) {
+                        final messages = widget.chatManager.messages;
+                        final processedMessages = _processMessagesWithDates(messages);
 
-                      return ScrollablePositionedList.builder(
-                        itemScrollController: _itemScrollController,
-                        itemPositionsListener: _itemPositionsListener,
-                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-                        itemCount: processedMessages.length,
-                        itemBuilder: (context, index) {
-                          final item = processedMessages[index];
-                          final messageIndex = messages.indexOf(item.message);
+                        return ScrollablePositionedList.builder(
+                          itemScrollController: _itemScrollController,
+                          itemPositionsListener: _itemPositionsListener,
+                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                          itemCount: processedMessages.length,
+                          itemBuilder: (context, index) {
+                            final item = processedMessages[index];
+                            final messageIndex = messages.indexOf(item.message);
 
-                          return Column(
-                            children: [
-                              if (item.showDateSeparator)
-                                _buildDateSeparator(item.dateLabel!),
-                              _AnimatedMessageBubble(
-                                key: ValueKey(item.message.id),
-                                message: item.message,
-                                showAvatar: _shouldShowAvatar(messageIndex, messages),
-                                showTimestamp: _shouldShowTimestamp(messageIndex, messages),
+                            // RepaintBoundary on each message for maximum isolation
+                            return RepaintBoundary(
+                              child: Column(
+                                children: [
+                                  if (item.showDateSeparator)
+                                    _buildDateSeparator(item.dateLabel!),
+                                  _AnimatedMessageBubble(
+                                    key: ValueKey(item.message.id),
+                                    message: item.message,
+                                    showAvatar: _shouldShowAvatar(messageIndex, messages),
+                                    showTimestamp: _shouldShowTimestamp(messageIndex, messages),
+                                  ),
+                                ],
                               ),
-                            ],
-                          );
-                        },
-                      );
-                    },
+                            );
+                          },
+                        );
+                      },
+                    ),
                   ),
 
                 // Scroll to bottom button

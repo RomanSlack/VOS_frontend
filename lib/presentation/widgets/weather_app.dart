@@ -117,9 +117,10 @@ class _WeatherAppState extends State<WeatherApp> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFF212121),
-      child: Column(
+    return RepaintBoundary(
+      child: Container(
+        color: const Color(0xFF212121),
+        child: Column(
         children: [
           // Header with search bar
           _buildHeader(),
@@ -135,6 +136,7 @@ class _WeatherAppState extends State<WeatherApp> {
                         : _buildEmptyState(),
           ),
         ],
+        ),
       ),
     );
   }
