@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:vos_app/presentation/widgets/circle_icon.dart';
@@ -23,6 +24,11 @@ class _InputBarState extends State<InputBar> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   late final VoiceManager _voiceManager;
+
+  // Hold-to-record state
+  bool _isHolding = false;
+  Timer? _holdDurationTimer;
+  static const Duration _maxHoldDuration = Duration(minutes: 2);
 
   @override
   void initState() {
@@ -63,6 +69,7 @@ class _InputBarState extends State<InputBar> {
 
   @override
   void dispose() {
+    _holdDurationTimer?.cancel();
     _voiceManager.removeListener(_onVoiceStateChanged);
     _voiceManager.disconnect();
     _controller.dispose();
@@ -80,8 +87,13 @@ class _InputBarState extends State<InputBar> {
     // Add optimistic message immediately
     final messageId = widget.modalManager.chatManager.addOptimisticMessage(text);
 
-    // Open chat app to show the message
-    widget.modalManager.openModal('chat', initialMessage: text);
+    // Only open chat if it's not already visible
+    final isChatVisible = widget.modalManager.isModalOpen('chat') &&
+                          !widget.modalManager.isModalMinimized('chat');
+
+    if (!isChatVisible) {
+      widget.modalManager.openModal('chat');
+    }
 
     // The ChatApp will detect the new user message and trigger the AI response
     // which will handle updating the message status
@@ -112,10 +124,53 @@ class _InputBarState extends State<InputBar> {
       voiceMetadata: voiceMetadata,
     );
 
-    // Open chat app to show the message
-    widget.modalManager.openModal('chat', initialMessage: text);
+    // Only open chat if it's not already visible
+    final isChatVisible = widget.modalManager.isModalOpen('chat') &&
+                          !widget.modalManager.isModalMinimized('chat');
+
+    if (!isChatVisible) {
+      widget.modalManager.openModal('chat');
+    }
 
     // The ChatApp will detect the new user message and trigger the AI response
+  }
+
+  void _onMicTap() {
+    // Single tap: toggle recording on/off (normal mode with endpointing)
+    if (_voiceManager.isListening) {
+      _voiceManager.stopListening();
+    } else {
+      _voiceManager.startListening();
+    }
+  }
+
+  void _onMicLongPressStart() {
+    // Long press start: start recording in hold mode
+    setState(() {
+      _isHolding = true;
+    });
+
+    // Start listening in hold mode (disables automatic silence detection)
+    _voiceManager.startListening(holdMode: true);
+
+    // Start timer to enforce max hold duration
+    _holdDurationTimer = Timer(_maxHoldDuration, () {
+      if (_isHolding) {
+        _onMicLongPressEnd();
+      }
+    });
+  }
+
+  void _onMicLongPressEnd() {
+    // Long press end: stop recording immediately
+    _holdDurationTimer?.cancel();
+    _holdDurationTimer = null;
+
+    setState(() {
+      _isHolding = false;
+    });
+
+    _voiceManager.stopListening();
   }
 
   @override
@@ -182,18 +237,21 @@ class _InputBarState extends State<InputBar> {
               listenable: _voiceManager,
               builder: (context, child) {
                 final isListening = _voiceManager.isListening;
-                return CircleIcon(
-                  icon: isListening ? Icons.mic : Icons.mic_none_outlined,
-                  size: 40,
-                  useFontAwesome: false,
-                  onPressed: () {
-                    if (isListening) {
-                      _voiceManager.stopListening();
-                    } else {
-                      _voiceManager.startListening();
-                    }
-                  },
-                  backgroundColor: isListening ? Colors.red.shade700 : null,
+                final backgroundColor = _isHolding
+                    ? Colors.orange.shade700
+                    : (isListening ? Colors.red.shade700 : null);
+
+                return GestureDetector(
+                  onTap: _onMicTap,
+                  onLongPressStart: (_) => _onMicLongPressStart(),
+                  onLongPressEnd: (_) => _onMicLongPressEnd(),
+                  child: CircleIcon(
+                    icon: isListening ? Icons.mic : Icons.mic_none_outlined,
+                    size: 40,
+                    useFontAwesome: false,
+                    onPressed: null, // Disabled, using GestureDetector instead
+                    backgroundColor: backgroundColor,
+                  ),
                 );
               },
             ),

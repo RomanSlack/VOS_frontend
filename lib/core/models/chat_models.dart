@@ -183,9 +183,12 @@ class AppInteractionPayload {
 @JsonSerializable()
 class VosMessageRequestDto {
   final String text;
+  @JsonKey(name: 'user_timezone')
+  final String? userTimezone;
 
   const VosMessageRequestDto({
     required this.text,
+    this.userTimezone,
   });
 
   factory VosMessageRequestDto.fromJson(Map<String, dynamic> json) =>

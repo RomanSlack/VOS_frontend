@@ -21,6 +21,7 @@ class ChatApp extends StatefulWidget {
   final ChatService chatService;
   final ValueNotifier<String?> statusNotifier;
   final ValueNotifier<bool> isActiveNotifier;
+  final ValueNotifier<bool> autoPlayAudioNotifier;
 
   const ChatApp({
     super.key,
@@ -28,6 +29,7 @@ class ChatApp extends StatefulWidget {
     required this.chatService,
     required this.statusNotifier,
     required this.isActiveNotifier,
+    required this.autoPlayAudioNotifier,
   });
 
   @override
@@ -80,21 +82,6 @@ class _ChatAppState extends State<ChatApp> {
 
       widget.isActiveNotifier.value = isThinking || isExecuting;
 
-      // When agent starts thinking, it means it received the user's message
-      // Update status of any pending voice messages to "sent"
-      if (isThinking) {
-        final messages = widget.chatManager.messages;
-        for (int i = messages.length - 1; i >= 0; i--) {
-          final msg = messages[i];
-          if (msg.isUser &&
-              msg.inputMode == 'voice' &&
-              msg.status == MessageStatus.sending) {
-            widget.chatManager.updateMessageStatus(msg.id, MessageStatus.sent);
-            debugPrint('✅ Updated voice message status to sent: ${msg.id}');
-            break; // Only update the most recent one
-          }
-        }
-      }
 
       // Keep status message visible even when agent goes idle
       // so users can see the last action that was performed
@@ -171,6 +158,9 @@ class _ChatAppState extends State<ChatApp> {
   }
 
   void _onChatManagerChanged() {
+    // Invalidate message cache when messages change (for status updates)
+    _cachedProcessedMessages = null;
+
     // Check if we received a new message
     final currentMessageCount = widget.chatManager.messages.length;
     if (currentMessageCount > _lastMessageCount) {
@@ -258,6 +248,14 @@ class _ChatAppState extends State<ChatApp> {
         // They're already sent through the voice WebSocket to voice_gateway
         if (lastMessage.inputMode == 'voice') {
           debugPrint('⏭️ Skipping AI trigger for voice message (already sent via voice WebSocket)');
+
+          // Update voice message status to sent
+          if (lastMessage.status == MessageStatus.sending) {
+            widget.chatManager.updateMessageStatus(
+              lastMessage.id,
+              MessageStatus.sent,
+            );
+          }
           return;
         }
 
@@ -278,7 +276,7 @@ class _ChatAppState extends State<ChatApp> {
 
       if (!mounted) return;
 
-      // Update message status to sent
+      // Update message status to sent AFTER server confirms receipt
       if (userMessage.status == MessageStatus.sending) {
         widget.chatManager.updateMessageStatus(
           userMessage.id,
@@ -296,13 +294,11 @@ class _ChatAppState extends State<ChatApp> {
       if (!mounted) return;
 
       // Update message status to error
-      if (userMessage.status == MessageStatus.sending) {
-        widget.chatManager.updateMessageStatus(
-          userMessage.id,
-          MessageStatus.error,
-          errorMessage: e.toString(),
-        );
-      }
+      widget.chatManager.updateMessageStatus(
+        userMessage.id,
+        MessageStatus.error,
+        errorMessage: e.toString(),
+      );
 
       final errorMessage = 'Sorry, I encountered an error: ${e.toString()}';
       widget.chatManager.addMessage(errorMessage, false);
@@ -577,17 +573,22 @@ class _ChatAppState extends State<ChatApp> {
                             final item = processedMessages[index];
                             final messageIndex = messages.indexOf(item.message);
 
+                            // Guard against indexOf returning -1
+                            final showAvatar = messageIndex >= 0 ? _shouldShowAvatar(messageIndex, messages) : true;
+                            final showTimestamp = messageIndex >= 0 ? _shouldShowTimestamp(messageIndex, messages) : true;
+
                             // RepaintBoundary on each message for maximum isolation
                             return RepaintBoundary(
                               child: Column(
                                 children: [
-                                  if (item.showDateSeparator)
+                                  if (item.showDateSeparator && item.dateLabel != null)
                                     _buildDateSeparator(item.dateLabel!),
                                   _AnimatedMessageBubble(
                                     key: ValueKey(item.message.id),
                                     message: item.message,
-                                    showAvatar: _shouldShowAvatar(messageIndex, messages),
-                                    showTimestamp: _shouldShowTimestamp(messageIndex, messages),
+                                    showAvatar: showAvatar,
+                                    showTimestamp: showTimestamp,
+                                    autoPlayAudioNotifier: widget.autoPlayAudioNotifier,
                                   ),
                                 ],
                               ),
@@ -753,12 +754,14 @@ class _AnimatedMessageBubble extends StatefulWidget {
   final ChatMessage message;
   final bool showAvatar;
   final bool showTimestamp;
+  final ValueNotifier<bool> autoPlayAudioNotifier;
 
   const _AnimatedMessageBubble({
     super.key,
     required this.message,
     required this.showAvatar,
     this.showTimestamp = true,
+    required this.autoPlayAudioNotifier,
   });
 
   @override
@@ -1149,9 +1152,24 @@ class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble>
                       children: [
                         // Audio player (if available)
                         if (hasAudio) ...[
-                          AudioPlayerWidget(
-                            audioFilePath: widget.message.audioFilePath!,
-                            autoPlay: false,
+                          ValueListenableBuilder<bool>(
+                            valueListenable: widget.autoPlayAudioNotifier,
+                            builder: (context, shouldAutoPlay, child) {
+                              // Check if we should auto-play this audio
+                              final autoPlay = shouldAutoPlay && !widget.message.isUser;
+
+                              // Reset the flag after reading it
+                              if (autoPlay) {
+                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                  widget.autoPlayAudioNotifier.value = false;
+                                });
+                              }
+
+                              return AudioPlayerWidget(
+                                audioFilePath: widget.message.audioFilePath!,
+                                autoPlay: autoPlay,
+                              );
+                            },
                           ),
                           const SizedBox(height: 8),
                         ],

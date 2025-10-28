@@ -192,13 +192,14 @@ class VoiceManager extends ChangeNotifier {
   }
 
   /// Start listening (recording and sending audio)
-  Future<void> startListening() async {
+  /// If [holdMode] is true, disables automatic silence detection
+  Future<void> startListening({bool holdMode = false}) async {
     // Clear error state
     if (_voiceState == VoiceState.error) {
       _lastError = null;
     }
 
-    await _voiceService.startListening();
+    await _voiceService.startListening(holdMode: holdMode);
   }
 
   /// Stop listening (stop recording)

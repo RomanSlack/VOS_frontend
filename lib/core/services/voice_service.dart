@@ -11,6 +11,7 @@ import 'package:dio/dio.dart';
 import 'package:vos_app/core/models/voice_models.dart';
 import 'package:vos_app/core/config/app_config.dart';
 import 'package:vos_app/core/api/voice_api.dart';
+import 'dart:js' as js;
 
 /// Connection state for voice WebSocket
 enum VoiceConnectionState {
@@ -46,6 +47,11 @@ class VoiceService {
   StreamSubscription<Uint8List>? _recordingSubscription;
   bool _isRecording = false;
 
+  // Keepalive for continuous audio streaming
+  Timer? _keepaliveTimer;
+  DateTime? _lastAudioSentTime;
+  static const Duration _keepaliveInterval = Duration(milliseconds: 100);
+
   // Audio playback
   final AudioPlayer _player = AudioPlayer();
 
@@ -67,6 +73,21 @@ class VoiceService {
     // }
 
     _voiceApi = VoiceApi(_dio, baseUrl: AppConfig.voiceApiBaseUrl);
+  }
+
+  /// Detect user timezone using JavaScript Intl API
+  String? _getUserTimezone() {
+    try {
+      if (kIsWeb) {
+        final timezone = js.context.callMethod('eval', [
+          'Intl.DateTimeFormat().resolvedOptions().timeZone'
+        ]);
+        return timezone as String?;
+      }
+    } catch (e) {
+      debugPrint('Failed to get user timezone: $e');
+    }
+    return null;
   }
 
   // Stream controllers for broadcasting events
@@ -253,7 +274,13 @@ class VoiceService {
 
   /// Send start_session message to server
   Future<void> _sendStartSession() async {
-    final payload = StartSessionPayload.webDefault;
+    // Detect user timezone
+    final userTimezone = _getUserTimezone();
+    if (userTimezone != null) {
+      debugPrint('🌍 Detected user timezone: $userTimezone');
+    }
+
+    final payload = StartSessionPayload.webDefault(userTimezone: userTimezone);
     final message = {
       'type': 'start_session',
       'payload': payload.toJson(),
@@ -289,10 +316,52 @@ class VoiceService {
     if (_connectionState == VoiceConnectionState.connected &&
         _channel != null) {
       _channel!.sink.add(chunk);
+      _lastAudioSentTime = DateTime.now();
       debugPrint('🎤 Sent audio chunk: ${chunk.length} bytes');
     } else {
       debugPrint('⚠️ Cannot send audio: WebSocket not connected');
     }
+  }
+
+  /// Generate a silence packet (PCM 16-bit audio filled with zeros)
+  /// Size matches typical chunk size from recorder (~1600 bytes for 100ms at 16kHz)
+  Uint8List _generateSilencePacket() {
+    // 16kHz sample rate, 1 channel, 16-bit (2 bytes per sample)
+    // For 100ms of audio: 16000 * 0.1 * 2 = 3200 bytes
+    final int silenceSize = 3200;
+    return Uint8List(silenceSize); // Zeros represent silence in PCM
+  }
+
+  /// Start keepalive timer to send silence packets during gaps
+  void _startKeepalive() {
+    _keepaliveTimer?.cancel();
+    _lastAudioSentTime = DateTime.now();
+
+    _keepaliveTimer = Timer.periodic(_keepaliveInterval, (timer) {
+      if (!_isRecording) {
+        timer.cancel();
+        return;
+      }
+
+      // Check if we haven't sent audio recently
+      final timeSinceLastAudio = DateTime.now().difference(_lastAudioSentTime!);
+      if (timeSinceLastAudio >= _keepaliveInterval) {
+        // Send a silence packet to keep Deepgram connection alive
+        final silencePacket = _generateSilencePacket();
+        _sendAudioChunk(silencePacket);
+        debugPrint('🔇 Sent silence packet (keepalive)');
+      }
+    });
+
+    debugPrint('⏰ Started audio keepalive timer');
+  }
+
+  /// Stop keepalive timer
+  void _stopKeepalive() {
+    _keepaliveTimer?.cancel();
+    _keepaliveTimer = null;
+    _lastAudioSentTime = null;
+    debugPrint('⏰ Stopped audio keepalive timer');
   }
 
   /// Handle incoming WebSocket messages
@@ -410,7 +479,8 @@ class VoiceService {
   }
 
   /// Start recording audio and streaming to server
-  Future<void> startListening() async {
+  /// If [holdMode] is true, the session is configured to not auto-stop on silence
+  Future<void> startListening({bool holdMode = false}) async {
     if (_isRecording) {
       debugPrint('⚠️ Already recording');
       return;
@@ -432,7 +502,10 @@ class VoiceService {
         _isRecording = true;
         _voiceStateController.add(VoiceState.listening);
 
-        debugPrint('🎤 Started recording audio');
+        debugPrint('🎤 Started recording audio (hold mode: $holdMode)');
+
+        // Start keepalive timer to ensure continuous audio stream
+        _startKeepalive();
 
         // Stream audio chunks to WebSocket
         _recordingSubscription = stream.listen(
@@ -470,6 +543,9 @@ class VoiceService {
     if (!_isRecording) return;
 
     try {
+      // Stop keepalive timer first
+      _stopKeepalive();
+
       await _recordingSubscription?.cancel();
       _recordingSubscription = null;
 

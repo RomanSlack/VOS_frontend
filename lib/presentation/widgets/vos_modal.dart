@@ -14,6 +14,7 @@ class VosModal extends StatefulWidget {
   final VoidCallback? onClose;
   final VoidCallback? onMinimize;
   final VoidCallback? onFullscreen;
+  final VoidCallback? onInteraction;
   final ValueNotifier<String?>? statusNotifier;
   final ValueNotifier<bool>? isActiveNotifier;
   final ValueNotifier<ModalState>? stateNotifier;
@@ -29,6 +30,7 @@ class VosModal extends StatefulWidget {
     this.onClose,
     this.onMinimize,
     this.onFullscreen,
+    this.onInteraction,
     this.statusNotifier,
     this.isActiveNotifier,
     this.stateNotifier,
@@ -107,9 +109,13 @@ class _VosModalState extends State<VosModal> {
     return ValueListenableBuilder<Offset>(
       valueListenable: _positionNotifier,
       builder: (context, position, child) {
+        // When fullscreen, position at top-left of available space (accounting for app rail)
+        final left = currentState == ModalState.fullscreen ? 112.0 : position.dx;
+        final top = currentState == ModalState.fullscreen ? 16.0 : position.dy;
+
         return Positioned(
-          left: position.dx,
-          top: position.dy,
+          left: left,
+          top: top,
           child: child!,
         );
       },
@@ -122,10 +128,12 @@ class _VosModalState extends State<VosModal> {
             builder: (context, size, child) {
               return Material(
                 color: Colors.transparent,
-                child: Container(
-                  width: currentState == ModalState.fullscreen ? MediaQuery.of(context).size.width - 144 : size.width,
-                  height: currentState == ModalState.fullscreen ? MediaQuery.of(context).size.height - 148 : size.height,
-                  decoration: BoxDecoration(
+                child: GestureDetector(
+                  onTap: () => widget.onInteraction?.call(),
+                  child: Container(
+                    width: currentState == ModalState.fullscreen ? MediaQuery.of(context).size.width - 144 : size.width,
+                    height: currentState == ModalState.fullscreen ? MediaQuery.of(context).size.height - 148 : size.height,
+                    decoration: BoxDecoration(
             color: _surfaceColor,
             borderRadius: BorderRadius.circular(_borderRadius),
             boxShadow: [
@@ -153,6 +161,7 @@ class _VosModalState extends State<VosModal> {
               child!,
               if (currentState != ModalState.fullscreen) _buildResizeHandle(),
             ],
+                    ),
                   ),
                 ),
               );
@@ -182,9 +191,10 @@ class _VosModalState extends State<VosModal> {
 
   Widget _buildTitleBar(ModalState currentState) {
     return GestureDetector(
-      onPanStart: _onDragStart,
-      onPanUpdate: _onDragUpdate,
-      onPanEnd: _onDragEnd,
+      // Disable dragging when fullscreen
+      onPanStart: currentState != ModalState.fullscreen ? _onDragStart : null,
+      onPanUpdate: currentState != ModalState.fullscreen ? _onDragUpdate : null,
+      onPanEnd: currentState != ModalState.fullscreen ? _onDragEnd : null,
       child: Container(
         height: _titleBarHeight,
         decoration: BoxDecoration(
@@ -297,6 +307,7 @@ class _VosModalState extends State<VosModal> {
     final currentState = widget.stateNotifier?.value ?? _state;
     if (currentState == ModalState.fullscreen) return;
 
+    widget.onInteraction?.call();
     _isDragging = true;
     _dragStartPosition = details.globalPosition;
     _dragStartOffset = _position;
@@ -399,6 +410,7 @@ class _VosModalState extends State<VosModal> {
   }
 
   void _onResizeStart(DragStartDetails details) {
+    widget.onInteraction?.call();
     _isResizing = true;
     _resizeStartPosition = details.globalPosition;
     _resizeStartWidth = _width;

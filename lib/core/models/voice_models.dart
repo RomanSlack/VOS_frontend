@@ -97,12 +97,18 @@ class StartSessionPayload {
   final String language;
   @JsonKey(name: 'voice_preference')
   final String voicePreference;
+  @JsonKey(name: 'endpointing_ms')
+  final int? endpointingMs;
+  @JsonKey(name: 'user_timezone')
+  final String? userTimezone;
 
   const StartSessionPayload({
     required this.platform,
     required this.audioFormat,
     required this.language,
     required this.voicePreference,
+    this.endpointingMs,
+    this.userTimezone,
   });
 
   factory StartSessionPayload.fromJson(Map<String, dynamic> json) =>
@@ -111,11 +117,28 @@ class StartSessionPayload {
   Map<String, dynamic> toJson() => _$StartSessionPayloadToJson(this);
 
   /// Create default payload for web platform
-  static StartSessionPayload get webDefault => const StartSessionPayload(
+  static StartSessionPayload webDefault({String? userTimezone}) =>
+      StartSessionPayload(
         platform: 'web',
         audioFormat: AudioFormat.webDefault,
         language: 'en',
         voicePreference: 'default',
+        endpointingMs: null, // Disable automatic endpointing by default
+        userTimezone: userTimezone,
+      );
+
+  /// Create payload with custom endpointing setting
+  static StartSessionPayload webWithEndpointing(
+    int? endpointingMs, {
+    String? userTimezone,
+  }) =>
+      StartSessionPayload(
+        platform: 'web',
+        audioFormat: AudioFormat.webDefault,
+        language: 'en',
+        voicePreference: 'default',
+        endpointingMs: endpointingMs,
+        userTimezone: userTimezone,
       );
 }
 

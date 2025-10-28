@@ -8,6 +8,7 @@ import 'package:vos_app/core/chat_manager.dart';
 import 'package:vos_app/core/services/websocket_service.dart';
 import 'package:vos_app/core/services/auth_service.dart';
 import 'package:vos_app/core/config/app_config.dart';
+import 'dart:js' as js;
 
 class ChatService {
   late final ChatApi _chatApi;
@@ -171,6 +172,23 @@ class ChatService {
   /// Get WebSocket app interaction stream for UI updates
   Stream<AppInteractionPayload> get appInteractionStream => _webSocketService.appInteractionStream;
 
+  /// Get user's timezone (IANA timezone name) using JavaScript interop
+  /// Returns timezone string like "America/New_York" or null if unavailable
+  String? _getUserTimezone() {
+    try {
+      if (kIsWeb) {
+        // Use JavaScript Intl API to get timezone
+        final timezone = js.context.callMethod('eval', [
+          'Intl.DateTimeFormat().resolvedOptions().timeZone'
+        ]);
+        return timezone as String?;
+      }
+    } catch (e) {
+      debugPrint('Failed to get user timezone: $e');
+    }
+    return null;
+  }
+
   /// Parse message content to extract actual user-facing message
   /// Handles raw agent responses with thought/tool_calls structure
   String _parseMessageContent(String content) {
@@ -271,8 +289,15 @@ class ChatService {
 
       final lastUserMessage = userMessages.last.text;
 
+      // Get user's timezone for calendar operations
+      final userTimezone = _getUserTimezone();
+      debugPrint('User timezone: $userTimezone');
+
       // Send message to VOS (this already stores in conversation_messages)
-      final request = VosMessageRequestDto(text: lastUserMessage);
+      final request = VosMessageRequestDto(
+        text: lastUserMessage,
+        userTimezone: userTimezone,
+      );
       final sendResponse = await _chatApi.sendMessage(request);
 
       debugPrint('Message sent: ${sendResponse.notificationId}');

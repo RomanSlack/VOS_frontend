@@ -4,7 +4,11 @@ import 'package:vos_app/presentation/widgets/input_bar.dart';
 import 'package:vos_app/presentation/widgets/workspace.dart';
 import 'package:vos_app/presentation/widgets/modal_limit_notification.dart';
 import 'package:vos_app/presentation/widgets/vos_modal.dart';
+import 'package:vos_app/presentation/widgets/notification_toast.dart';
 import 'package:vos_app/core/modal_manager.dart';
+import 'package:vos_app/core/services/calendar_service.dart';
+import 'package:vos_app/core/di/injection.dart';
+import 'package:vos_app/core/utils/logger.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -24,6 +28,27 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         _modalManager = VosModalManager();
       });
+      _initializeNotifications();
+    });
+  }
+
+  void _initializeNotifications() {
+    final calendarService = getIt<CalendarService>();
+    final notificationService = calendarService.notificationService;
+
+    // Setup callback for reminder notifications
+    notificationService.onReminderTriggered = (reminder) {
+      logger.i('HomePage: Reminder triggered: ${reminder.title}');
+      if (mounted) {
+        NotificationToastManager.show(context, reminder);
+      }
+    };
+
+    // Connect to WebSocket
+    notificationService.connect().then((_) {
+      logger.i('HomePage: Calendar notification service connected');
+    }).catchError((error) {
+      logger.e('HomePage: Failed to connect notification service: $error');
     });
   }
 

@@ -62,6 +62,13 @@ class AppRail extends StatelessWidget {
           ),
           const SizedBox(height: iconSpacing),
           AppIcon(
+            appId: 'reminders',
+            icon: Icons.notifications_active,
+            size: iconSize,
+            modalManager: modalManager,
+          ),
+          const SizedBox(height: iconSpacing),
+          AppIcon(
             appId: 'tasks',
             icon: Icons.check_circle_outline,
             size: iconSize,
@@ -78,13 +85,6 @@ class AppRail extends StatelessWidget {
           AppIcon(
             appId: 'browser',
             icon: Icons.language_outlined,
-            size: iconSize,
-            modalManager: modalManager,
-          ),
-          const SizedBox(height: iconSpacing),
-          AppIcon(
-            appId: 'analytics',
-            icon: Icons.bar_chart_outlined,
             size: iconSize,
             modalManager: modalManager,
           ),

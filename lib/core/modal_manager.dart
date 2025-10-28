@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vos_app/presentation/widgets/vos_modal.dart';
 import 'package:vos_app/presentation/widgets/chat_app.dart';
-import 'package:vos_app/presentation/widgets/calendar_app.dart';
+import 'package:vos_app/presentation/widgets/calendar_app_new.dart';
 import 'package:vos_app/presentation/widgets/notes_app.dart';
 import 'package:vos_app/presentation/widgets/weather_app.dart';
+import 'package:vos_app/presentation/widgets/reminders_app.dart';
 import 'package:vos_app/core/chat_manager.dart';
 import 'package:vos_app/core/services/chat_service.dart';
 import 'package:vos_app/core/services/weather_service.dart';
+import 'package:vos_app/features/calendar/bloc/calendar_bloc.dart';
+import 'package:vos_app/features/reminders/bloc/reminders_bloc.dart';
 import 'package:vos_app/core/di/injection.dart';
 
 // App definitions for each modal
@@ -32,12 +36,14 @@ class ModalInstance {
   final VosModal modal;
   final ValueNotifier<ModalState> stateNotifier;
   final DateTime openedAt;
+  int zIndex;
 
   ModalInstance({
     required this.appId,
     required this.modal,
     required this.stateNotifier,
     required this.openedAt,
+    this.zIndex = 0,
   });
 
   ModalState get state => stateNotifier.value;
@@ -58,23 +64,29 @@ class VosModalManager extends ChangeNotifier {
   late final WeatherService _weatherService;
   final ValueNotifier<String?> _chatStatusNotifier = ValueNotifier<String?>(null);
   final ValueNotifier<bool> _chatIsActiveNotifier = ValueNotifier<bool>(true);
+  final ValueNotifier<bool> _autoPlayAudioNotifier = ValueNotifier<bool>(false);
 
   // Cache for performance
   List<ModalInstance>? _openModalsCache;
   List<ModalInstance>? _minimizedModalsCache;
   bool _cacheValid = false;
 
-  // Getters with caching
+  // Track last message count for auto-open detection
+  int _lastMessageCount = 0;
+
+  // Getters with caching - sorted by z-index
   List<ModalInstance> get openModals {
     if (!_cacheValid || _openModalsCache == null) {
-      _openModalsCache = _openModals.values.toList();
+      _openModalsCache = _openModals.values.toList()
+        ..sort((a, b) => a.zIndex.compareTo(b.zIndex));
     }
     return _openModalsCache!;
   }
 
   List<ModalInstance> get minimizedModals {
     if (!_cacheValid || _minimizedModalsCache == null) {
-      _minimizedModalsCache = _minimizedModals.values.toList();
+      _minimizedModalsCache = _minimizedModals.values.toList()
+        ..sort((a, b) => a.zIndex.compareTo(b.zIndex));
     }
     return _minimizedModalsCache!;
   }
@@ -84,10 +96,46 @@ class VosModalManager extends ChangeNotifier {
   bool get canOpenMore => openModalCount < maxModals;
   ChatManager get chatManager => _chatManager;
 
+
   VosModalManager() {
     _chatManager = ChatManager();
     _chatService = getIt<ChatService>();
     _weatherService = getIt<WeatherService>();
+
+    // Listen for new AI messages to auto-open chat
+    _chatManager.addListener(_onChatMessagesChanged);
+  }
+
+  void _onChatMessagesChanged() {
+    final messages = _chatManager.messages;
+
+    // Check if there's a new message
+    if (messages.length > _lastMessageCount) {
+      final newMessage = messages.last;
+
+      // Only auto-open for AI messages (not user messages)
+      if (!newMessage.isUser) {
+        final isChatOpen = isModalOpen('chat') && !isModalMinimized('chat');
+
+        // If chat is not visible, open it
+        if (!isChatOpen) {
+          // Check if the AI message has audio (voice response)
+          if (newMessage.audioFilePath != null && newMessage.audioFilePath!.isNotEmpty) {
+            _autoPlayAudioNotifier.value = true;
+          }
+
+          openModal('chat');
+        }
+      }
+    }
+
+    _lastMessageCount = messages.length;
+  }
+
+  @override
+  void dispose() {
+    _chatManager.removeListener(_onChatMessagesChanged);
+    super.dispose();
   }
 
   void _invalidateCache() {
@@ -157,6 +205,7 @@ class VosModalManager extends ChangeNotifier {
       final instance = _minimizedModals.remove(appId)!;
       instance.state = ModalState.normal;
       _openModals[appId] = instance;
+      bringToFront(appId);
       _invalidateCache();
       notifyListeners();
       return;
@@ -213,8 +262,14 @@ class VosModalManager extends ChangeNotifier {
       child = _buildCalendarContent();
       title = 'Calendar';
       icon = Icons.calendar_today_outlined;
-      width = 500;
-      height = 420;
+      width = 900;
+      height = 650;
+    } else if (appId == 'reminders') {
+      child = _buildRemindersContent();
+      title = 'Reminders';
+      icon = Icons.notifications_outlined;
+      width = 700;
+      height = 600;
     } else if (appId == 'notes') {
       child = _buildNotesContent();
       title = 'Notes';
@@ -248,17 +303,25 @@ class VosModalManager extends ChangeNotifier {
       onClose: () => closeModal(appId),
       onMinimize: () => minimizeModal(appId),
       onFullscreen: () => fullscreenModal(appId),
+      onInteraction: () => bringToFront(appId),
       statusNotifier: appId == 'chat' ? _chatStatusNotifier : null,
       isActiveNotifier: appId == 'chat' ? _chatIsActiveNotifier : null,
       stateNotifier: stateNotifier,
       child: child,
     );
 
+    // Calculate z-index (new modals should be on top)
+    int maxZ = 0;
+    for (final m in _openModals.values) {
+      if (m.zIndex > maxZ) maxZ = m.zIndex;
+    }
+
     _openModals[appId] = ModalInstance(
       appId: appId,
       modal: modal,
       stateNotifier: stateNotifier,
       openedAt: DateTime.now(),
+      zIndex: maxZ + 1,
     );
 
     _invalidateCache();
@@ -298,8 +361,12 @@ class VosModalManager extends ChangeNotifier {
       // Toggle between fullscreen and normal
       if (instance.state == ModalState.fullscreen) {
         instance.state = ModalState.normal;
+        // When exiting fullscreen, bring to front
+        bringToFront(appId);
       } else {
         instance.state = ModalState.fullscreen;
+        // When going fullscreen, send to back
+        sendToBack(appId);
       }
 
       // If it was minimized, move it back to open
@@ -318,6 +385,48 @@ class VosModalManager extends ChangeNotifier {
       _showLimitNotification = false;
       notifyListeners();
     }
+  }
+
+  // Bring a modal to the front (highest z-index)
+  void bringToFront(String appId) {
+    final modal = _openModals[appId] ?? _minimizedModals[appId];
+    if (modal == null) return;
+
+    // Find the current highest z-index
+    int maxZ = 0;
+    for (final m in _openModals.values) {
+      if (m.zIndex > maxZ) maxZ = m.zIndex;
+    }
+    for (final m in _minimizedModals.values) {
+      if (m.zIndex > maxZ) maxZ = m.zIndex;
+    }
+
+    // Only update if not already on top
+    if (modal.zIndex < maxZ) {
+      modal.zIndex = maxZ + 1;
+      _invalidateCache();
+      notifyListeners();
+    }
+  }
+
+  // Send a modal to the back (lowest z-index)
+  void sendToBack(String appId) {
+    final modal = _openModals[appId] ?? _minimizedModals[appId];
+    if (modal == null) return;
+
+    // Find the current lowest z-index
+    int minZ = modal.zIndex;
+    for (final m in _openModals.values) {
+      if (m.zIndex < minZ) minZ = m.zIndex;
+    }
+    for (final m in _minimizedModals.values) {
+      if (m.zIndex < minZ) minZ = m.zIndex;
+    }
+
+    // Set to one below the current minimum
+    modal.zIndex = minZ - 1;
+    _invalidateCache();
+    notifyListeners();
   }
 
   Offset _calculateModalPosition() {
@@ -469,11 +578,22 @@ class VosModalManager extends ChangeNotifier {
       chatService: _chatService,
       statusNotifier: _chatStatusNotifier,
       isActiveNotifier: _chatIsActiveNotifier,
+      autoPlayAudioNotifier: _autoPlayAudioNotifier,
     );
   }
 
   Widget _buildCalendarContent() {
-    return const CalendarApp();
+    return BlocProvider(
+      create: (context) => getIt<CalendarBloc>(),
+      child: const CalendarAppNew(),
+    );
+  }
+
+  Widget _buildRemindersContent() {
+    return BlocProvider(
+      create: (context) => getIt<RemindersBloc>(),
+      child: const RemindersApp(),
+    );
   }
 
   Widget _buildNotesContent() {
