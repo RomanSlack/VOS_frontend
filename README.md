@@ -7,7 +7,7 @@
 
 A modern **Virtual Operating System** interface built with Flutter, featuring a sleek dark theme, AI-powered workspace, and elegant modal window management.
 
-![VOS Frontend](readme_images/vos_frontend_intro.png)
+![VOS Frontend](readme_images/updated_1.png)
 
 ## 🌟 What is VOS?
 

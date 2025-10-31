@@ -39,17 +39,33 @@ class NoteCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final content = note.content ?? note.contentPreview ?? '';
-    final preview = content.length > 200 ? '${content.substring(0, 200)}...' : content;
+    // Dynamically determine preview length based on content
+    int maxLines = 4;
+    String preview;
+    if (content.length <= 100) {
+      preview = content;
+      maxLines = 3;
+    } else if (content.length <= 200) {
+      preview = content;
+      maxLines = 4;
+    } else if (content.length <= 400) {
+      preview = '${content.substring(0, 200)}...';
+      maxLines = 5;
+    } else {
+      preview = '${content.substring(0, 150)}...';
+      maxLines = 4;
+    }
 
     return Card(
       color: _getNoteColor(),
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.zero,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Title and actions row
@@ -58,20 +74,22 @@ class NoteCard extends StatelessWidget {
                   if (note.isPinned)
                     const Padding(
                       padding: EdgeInsets.only(right: 8),
-                      child: Icon(Icons.push_pin, size: 16, color: Colors.black54),
+                      child: Icon(Icons.push_pin, size: 16, color: Colors.black87),
                     ),
                   Expanded(
                     child: Text(
                       note.title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert),
+                    icon: const Icon(Icons.more_vert, color: Colors.black87),
                     onSelected: (value) {
                       switch (value) {
                         case 'pin':
@@ -126,8 +144,12 @@ class NoteCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   preview,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                  maxLines: 4,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.black87,
+                    height: 1.4,
+                  ),
+                  maxLines: maxLines,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],

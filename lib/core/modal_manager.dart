@@ -56,7 +56,7 @@ class ModalInstance {
 }
 
 class VosModalManager extends ChangeNotifier {
-  static const int maxModals = 4;
+  static const int maxModals = 30;
   static const String defaultSessionId = 'user_session_default';
 
   final Map<String, ModalInstance> _openModals = {};
