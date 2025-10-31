@@ -11,6 +11,9 @@ import 'package:vos_app/core/services/chat_service.dart';
 import 'package:vos_app/core/services/weather_service.dart';
 import 'package:vos_app/features/calendar/bloc/calendar_bloc.dart';
 import 'package:vos_app/features/reminders/bloc/reminders_bloc.dart';
+import 'package:vos_app/features/notes/bloc/notes_bloc.dart';
+import 'package:vos_app/features/notes/bloc/notes_event.dart';
+import 'package:vos_app/features/notes/pages/notes_page.dart';
 import 'package:vos_app/core/di/injection.dart';
 
 // App definitions for each modal
@@ -597,7 +600,10 @@ class VosModalManager extends ChangeNotifier {
   }
 
   Widget _buildNotesContent() {
-    return const NotesApp();
+    return BlocProvider(
+      create: (context) => getIt<NotesBloc>()..add(const LoadNotes()),
+      child: const NotesPage(),
+    );
   }
 
   Widget _buildWeatherContent() {

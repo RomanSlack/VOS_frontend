@@ -8,4 +8,5 @@ class AppRoutes {
   static const String profile = '/profile';
   static const String settings = '/settings';
   static const String voiceTest = '/voice-test';
+  static const String notes = '/notes';
 }

@@ -7,6 +7,11 @@ import 'package:vos_app/presentation/pages/home/home_page.dart';
 import 'package:vos_app/presentation/pages/splash/splash_page.dart';
 import 'package:vos_app/presentation/pages/login/login_page.dart';
 import 'package:vos_app/features/voice/pages/voice_test_page.dart';
+import 'package:vos_app/features/notes/pages/notes_page.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:vos_app/core/di/injection.dart';
+import 'package:vos_app/features/notes/bloc/notes_bloc.dart';
+import 'package:vos_app/features/notes/bloc/notes_event.dart';
 
 @lazySingleton
 class AppRouter {
@@ -58,6 +63,14 @@ class AppRouter {
           path: AppRoutes.voiceTest,
           name: AppRoutes.voiceTest,
           builder: (context, state) => const VoiceTestPage(),
+        ),
+        GoRoute(
+          path: AppRoutes.notes,
+          name: AppRoutes.notes,
+          builder: (context, state) => BlocProvider(
+            create: (context) => getIt<NotesBloc>()..add(const LoadNotes()),
+            child: const NotesPage(),
+          ),
         ),
       ],
       errorBuilder: (context, state) => _ErrorPage(error: state.error),

@@ -150,5 +150,8 @@ flutter pub run build_runner build --delete-conflicting-outputs
 flutter build web
 flutter run -d web-server --web-port=8090
 
+docker compose -f docker-compose.backend-only.yml up -d --build 
+
+
 Username: admin / Password: admin123
 Username: user1 / Password: password1
