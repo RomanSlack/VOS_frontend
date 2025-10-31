@@ -507,24 +507,51 @@ class _NoteFullscreenViewState extends State<NoteFullscreenView> {
           const SizedBox(height: 16),
 
           // Color selection
-          Row(
-            children: [
-              const Text(
-                'Color: ',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFFEDEDED),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2A2A2A),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.palette_outlined, size: 18, color: Color(0xFF757575)),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Color Theme',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFFEDEDED),
+                      ),
+                    ),
+                    const Spacer(),
+                    if (_selectedColor != null)
+                      TextButton.icon(
+                        onPressed: () => setState(() => _selectedColor = null),
+                        icon: const Icon(Icons.clear, size: 16, color: Color(0xFF757575)),
+                        label: const Text(
+                          'Reset',
+                          style: TextStyle(color: Color(0xFF757575), fontSize: 12),
+                        ),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        ),
+                      ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              ...colors.map((color) => _buildColorOption(color)),
-              if (_selectedColor != null)
-                IconButton(
-                  icon: const Icon(Icons.clear, size: 18, color: Color(0xFF757575)),
-                  onPressed: () => setState(() => _selectedColor = null),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: colors.map((color) => _buildColorOption(color)).toList(),
                 ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: 24),
           Divider(color: Colors.white.withOpacity(0.1)),
@@ -563,46 +590,64 @@ class _NoteFullscreenViewState extends State<NoteFullscreenView> {
     final isSelected = _selectedColor == color;
     Color colorValue;
 
+    // Use darker, more muted colors that match the theme
     switch (color) {
       case 'red':
-        colorValue = Colors.red;
+        colorValue = const Color(0xFFEF5350); // Softer red
         break;
       case 'blue':
-        colorValue = Colors.blue;
+        colorValue = const Color(0xFF42A5F5); // Softer blue
         break;
       case 'green':
-        colorValue = Colors.green;
+        colorValue = const Color(0xFF66BB6A); // Softer green
         break;
       case 'yellow':
-        colorValue = Colors.yellow;
+        colorValue = const Color(0xFFFFEE58); // Softer yellow
         break;
       case 'orange':
-        colorValue = Colors.orange;
+        colorValue = const Color(0xFFFF9800); // Match site accent
         break;
       case 'purple':
-        colorValue = Colors.purple;
+        colorValue = const Color(0xFFAB47BC); // Softer purple
         break;
       default:
-        colorValue = Colors.grey;
+        colorValue = const Color(0xFF757575);
     }
 
     return GestureDetector(
       onTap: () => setState(() => _selectedColor = color),
       child: Container(
-        width: 36,
-        height: 36,
-        margin: const EdgeInsets.only(right: 8),
+        width: 40,
+        height: 40,
+        margin: const EdgeInsets.only(right: 12),
         decoration: BoxDecoration(
-          color: colorValue,
+          color: isSelected ? colorValue : Colors.transparent,
           shape: BoxShape.circle,
           border: Border.all(
-            color: isSelected ? Colors.black : Colors.transparent,
-            width: 3,
+            color: isSelected ? colorValue : colorValue.withOpacity(0.5),
+            width: isSelected ? 3 : 2,
           ),
         ),
-        child: isSelected
-            ? const Icon(Icons.check, color: Colors.white, size: 20)
-            : null,
+        child: Center(
+          child: Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: colorValue,
+              shape: BoxShape.circle,
+              boxShadow: isSelected ? [
+                BoxShadow(
+                  color: colorValue.withOpacity(0.5),
+                  blurRadius: 8,
+                  spreadRadius: 1,
+                )
+              ] : null,
+            ),
+            child: isSelected
+                ? const Icon(Icons.check, color: Color(0xFF212121), size: 16)
+                : null,
+          ),
+        ),
       ),
     );
   }

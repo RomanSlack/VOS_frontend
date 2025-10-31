@@ -7,6 +7,7 @@ class NoteCard extends StatelessWidget {
   final VoidCallback? onPin;
   final VoidCallback? onArchive;
   final VoidCallback? onDelete;
+  final Function(Note)? onDragToWorkspace;
 
   const NoteCard({
     Key? key,
@@ -15,6 +16,7 @@ class NoteCard extends StatelessWidget {
     this.onPin,
     this.onArchive,
     this.onDelete,
+    this.onDragToWorkspace,
   }) : super(key: key);
 
   Color _getNoteColor() {
@@ -56,18 +58,91 @@ class NoteCard extends StatelessWidget {
       maxLines = 4;
     }
 
-    return Card(
-      color: _getNoteColor(),
-      margin: EdgeInsets.zero,
-      child: InkWell(
-        onTap: onTap,
+    return LongPressDraggable<Note>(
+      data: note,
+      feedback: Material(
+        elevation: 8,
         borderRadius: BorderRadius.circular(12),
-        child: Padding(
+        child: Container(
+          width: 240,
           padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: _getNoteColor(),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 16,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text(
+                note.title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 8),
+              const Icon(Icons.drag_indicator, color: Colors.black54, size: 20),
+            ],
+          ),
+        ),
+      ),
+      childWhenDragging: Opacity(
+        opacity: 0.3,
+        child: Card(
+          color: _getNoteColor(),
+          margin: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  note.title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      onDragStarted: () {
+        // Visual feedback
+      },
+      onDragEnd: (details) {
+        if (details.wasAccepted) {
+          // Successfully dropped on workspace
+        }
+      },
+      child: Card(
+        color: _getNoteColor(),
+        margin: EdgeInsets.zero,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               // Title and actions row
               Row(
                 children: [
@@ -206,6 +281,7 @@ class NoteCard extends StatelessWidget {
           ),
         ),
       ),
+    ),
     );
   }
 
