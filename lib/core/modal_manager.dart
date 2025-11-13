@@ -69,6 +69,12 @@ class VosModalManager extends ChangeNotifier {
   final ValueNotifier<bool> _chatIsActiveNotifier = ValueNotifier<bool>(true);
   final ValueNotifier<bool> _autoPlayAudioNotifier = ValueNotifier<bool>(false);
 
+  // Zoom functionality
+  final ValueNotifier<double> _zoomLevelNotifier = ValueNotifier<double>(1.0);
+  static const double minZoom = 0.5;
+  static const double maxZoom = 2.0;
+  static const double zoomStep = 0.1;
+
   // Cache for performance
   List<ModalInstance>? _openModalsCache;
   List<ModalInstance>? _minimizedModalsCache;
@@ -450,6 +456,30 @@ class VosModalManager extends ChangeNotifier {
 
   bool isModalMinimized(String appId) {
     return _minimizedModals.containsKey(appId);
+  }
+
+  // Zoom methods
+  ValueNotifier<double> get zoomLevelNotifier => _zoomLevelNotifier;
+  double get zoomLevel => _zoomLevelNotifier.value;
+
+  void zoomIn() {
+    final newZoom = (_zoomLevelNotifier.value + zoomStep).clamp(minZoom, maxZoom);
+    if (newZoom != _zoomLevelNotifier.value) {
+      _zoomLevelNotifier.value = newZoom;
+    }
+  }
+
+  void zoomOut() {
+    final newZoom = (_zoomLevelNotifier.value - zoomStep).clamp(minZoom, maxZoom);
+    if (newZoom != _zoomLevelNotifier.value) {
+      _zoomLevelNotifier.value = newZoom;
+    }
+  }
+
+  void resetZoom() {
+    if (_zoomLevelNotifier.value != 1.0) {
+      _zoomLevelNotifier.value = 1.0;
+    }
   }
 
   // Content builders for each app

@@ -4,7 +4,8 @@
       "Read(//c/Users/forke/Documents/VOS/services/agents/search_agent/**)",
       "Read(//c/Users/forke/Documents/VOS/services/tools/search/**)",
       "Read(//c/Users/forke/Documents/VOS/**)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "ask": []

@@ -6,6 +6,7 @@ import 'package:vos_app/presentation/widgets/modal_limit_notification.dart';
 import 'package:vos_app/presentation/widgets/vos_modal.dart';
 import 'package:vos_app/presentation/widgets/notification_toast.dart';
 import 'package:vos_app/presentation/widgets/sticky_note.dart';
+import 'package:vos_app/presentation/widgets/zoom_controls.dart';
 import 'package:vos_app/core/modal_manager.dart';
 import 'package:vos_app/core/sticky_notes_manager.dart';
 import 'package:vos_app/core/services/calendar_service.dart';
@@ -79,25 +80,12 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       body: Stack(
         children: [
-          const Workspace(), // Grid background behind everything
-          // DragTarget for sticky notes
-          DragTarget<Note>(
-            onWillAccept: (note) => note != null,
-            onAcceptWithDetails: (details) {
-              // Calculate position relative to screen
-              final RenderBox box = context.findRenderObject() as RenderBox;
-              final Offset localPosition = box.globalToLocal(details.offset);
-
-              _stickyNotesManager.addStickyNote(details.data, localPosition);
-            },
-            builder: (context, candidateData, rejectedData) {
-              return Container(
-                color: candidateData.isNotEmpty
-                  ? Colors.green.withOpacity(0.1)
-                  : Colors.transparent,
-              );
-            },
+          // Zoomable workspace area (everything except AppRail, InputBar, and ZoomControls)
+          _ZoomableWorkspace(
+            modalManager: _modalManager!,
+            stickyNotesManager: _stickyNotesManager,
           ),
+          // Fixed UI elements (not affected by zoom)
           Row(
             children: [
               AppRail(modalManager: _modalManager!),
@@ -106,18 +94,71 @@ class _HomePageState extends State<HomePage> {
               ),
             ],
           ),
-          // Optimized modal rendering
-          _OptimizedModalStack(modalManager: _modalManager!),
-          // Sticky notes overlay
-          _StickyNotesOverlay(stickyNotesManager: _stickyNotesManager),
           // Modal limit notification
           ModalLimitNotification(modalManager: _modalManager!),
           Align(
             alignment: Alignment.bottomCenter,
             child: InputBar(modalManager: _modalManager!),
           ),
+          // Zoom controls in bottom right
+          ZoomControls(modalManager: _modalManager!),
         ],
       ),
+    );
+  }
+}
+
+// Zoomable workspace widget that applies zoom transform
+class _ZoomableWorkspace extends StatelessWidget {
+  final VosModalManager modalManager;
+  final StickyNotesManager stickyNotesManager;
+
+  const _ZoomableWorkspace({
+    required this.modalManager,
+    required this.stickyNotesManager,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<double>(
+      valueListenable: modalManager.zoomLevelNotifier,
+      builder: (context, zoomLevel, child) {
+        return Transform.scale(
+          scale: zoomLevel,
+          alignment: Alignment.center,
+          child: Stack(
+            children: [
+              const Workspace(), // Grid background behind everything
+              // DragTarget for sticky notes
+              DragTarget<Note>(
+                onWillAccept: (note) => note != null,
+                onAcceptWithDetails: (details) {
+                  // Calculate position relative to screen, accounting for zoom
+                  final RenderBox box = context.findRenderObject() as RenderBox;
+                  final Offset localPosition = box.globalToLocal(details.offset);
+                  // Adjust position for zoom level
+                  final adjustedPosition = Offset(
+                    localPosition.dx / zoomLevel,
+                    localPosition.dy / zoomLevel,
+                  );
+                  stickyNotesManager.addStickyNote(details.data, adjustedPosition);
+                },
+                builder: (context, candidateData, rejectedData) {
+                  return Container(
+                    color: candidateData.isNotEmpty
+                        ? Colors.green.withOpacity(0.1)
+                        : Colors.transparent,
+                  );
+                },
+              ),
+              // Optimized modal rendering
+              _OptimizedModalStack(modalManager: modalManager),
+              // Sticky notes overlay
+              _StickyNotesOverlay(stickyNotesManager: stickyNotesManager),
+            ],
+          ),
+        );
+      },
     );
   }
 }
