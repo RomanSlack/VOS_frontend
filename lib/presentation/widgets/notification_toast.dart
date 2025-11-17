@@ -22,7 +22,7 @@ class NotificationToast extends StatelessWidget {
         color: const Color(0xFF303030),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: const Color(0xFF2196F3),
+          color: const Color(0xFF00BCD4),
           width: 2,
         ),
         boxShadow: [
@@ -48,12 +48,12 @@ class NotificationToast extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF2196F3).withOpacity(0.2),
+                      color: const Color(0xFF00BCD4).withOpacity(0.2),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
                       Icons.notifications_active,
-                      color: Color(0xFF2196F3),
+                      color: Color(0xFF00BCD4),
                       size: 20,
                     ),
                   ),
@@ -123,13 +123,13 @@ class NotificationToast extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.event, color: Color(0xFF2196F3), size: 14),
+                      const Icon(Icons.event, color: Color(0xFF00BCD4), size: 14),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
                           'Event: ${reminder.eventTitle}',
                           style: const TextStyle(
-                            color: Color(0xFF2196F3),
+                            color: Color(0xFF00BCD4),
                             fontSize: 12,
                           ),
                           maxLines: 1,
@@ -149,7 +149,7 @@ class NotificationToast extends StatelessWidget {
                 child: TextButton(
                   onPressed: onDismiss,
                   style: TextButton.styleFrom(
-                    backgroundColor: const Color(0xFF2196F3),
+                    backgroundColor: const Color(0xFF00BCD4),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   ),
                   child: const Text(

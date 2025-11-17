@@ -111,7 +111,7 @@ class _ReminderFormDialogState extends State<ReminderFormDialog> {
                 children: [
                   Icon(
                     _getModeIcon(),
-                    color: const Color(0xFF2196F3),
+                    color: const Color(0xFF00BCD4),
                     size: 24,
                   ),
                   const SizedBox(width: 12),
@@ -152,7 +152,7 @@ class _ReminderFormDialogState extends State<ReminderFormDialog> {
                             ),
                           ),
                           focusedBorder: const OutlineInputBorder(
-                            borderSide: BorderSide(color: Color(0xFF2196F3)),
+                            borderSide: BorderSide(color: Color(0xFF00BCD4)),
                           ),
                         ),
                         validator: (value) {
@@ -178,7 +178,7 @@ class _ReminderFormDialogState extends State<ReminderFormDialog> {
                             ),
                           ),
                           focusedBorder: const OutlineInputBorder(
-                            borderSide: BorderSide(color: Color(0xFF2196F3)),
+                            borderSide: BorderSide(color: Color(0xFF00BCD4)),
                           ),
                         ),
                       ),
@@ -213,7 +213,7 @@ class _ReminderFormDialogState extends State<ReminderFormDialog> {
                   ElevatedButton(
                     onPressed: _saveReminder,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2196F3),
+                      backgroundColor: const Color(0xFF00BCD4),
                     ),
                     child: Text(widget.reminder == null ? 'Create' : 'Save'),
                   ),
@@ -287,7 +287,7 @@ class _ReminderFormDialogState extends State<ReminderFormDialog> {
                         ),
                       ),
                       focusedBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF2196F3)),
+                        borderSide: BorderSide(color: Color(0xFF00BCD4)),
                       ),
                     ),
                     validator: (value) {
@@ -322,7 +322,7 @@ class _ReminderFormDialogState extends State<ReminderFormDialog> {
                         ),
                       ),
                       focusedBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFF2196F3)),
+                        borderSide: BorderSide(color: Color(0xFF00BCD4)),
                       ),
                     ),
                     validator: (value) {
@@ -363,7 +363,7 @@ class _ReminderFormDialogState extends State<ReminderFormDialog> {
         });
       },
       backgroundColor: const Color(0xFF424242),
-      selectedColor: const Color(0xFF2196F3),
+      selectedColor: const Color(0xFF00BCD4),
       labelStyle: const TextStyle(color: Color(0xFFEDEDED)),
     );
   }
@@ -393,7 +393,7 @@ class _ReminderFormDialogState extends State<ReminderFormDialog> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.access_time, color: Color(0xFF2196F3)),
+                const Icon(Icons.access_time, color: Color(0xFF00BCD4)),
                 const SizedBox(width: 12),
                 Text(
                   _selectedTime.format(context),
@@ -433,7 +433,7 @@ class _ReminderFormDialogState extends State<ReminderFormDialog> {
                 borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
               ),
               focusedBorder: const OutlineInputBorder(
-                borderSide: BorderSide(color: Color(0xFF2196F3)),
+                borderSide: BorderSide(color: Color(0xFF00BCD4)),
               ),
             ),
             child: Row(
@@ -468,7 +468,7 @@ class _ReminderFormDialogState extends State<ReminderFormDialog> {
                 borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
               ),
               focusedBorder: const OutlineInputBorder(
-                borderSide: BorderSide(color: Color(0xFF2196F3)),
+                borderSide: BorderSide(color: Color(0xFF00BCD4)),
               ),
             ),
             child: Row(
@@ -515,7 +515,7 @@ class _ReminderFormDialogState extends State<ReminderFormDialog> {
               },
               child: Text(
                 _recurrenceRule == null ? 'Set Recurrence' : 'Edit',
-                style: const TextStyle(color: Color(0xFF2196F3)),
+                style: const TextStyle(color: Color(0xFF00BCD4)),
               ),
             ),
           ],

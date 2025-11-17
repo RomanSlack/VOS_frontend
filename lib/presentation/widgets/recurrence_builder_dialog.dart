@@ -130,7 +130,7 @@ class _RecurrenceBuilderDialogState extends State<RecurrenceBuilderDialog> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.info_outline, color: Color(0xFF2196F3), size: 16),
+                  const Icon(Icons.info_outline, color: Color(0xFF00BCD4), size: 16),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -162,7 +162,7 @@ class _RecurrenceBuilderDialogState extends State<RecurrenceBuilderDialog> {
                 ElevatedButton(
                   onPressed: _saveRecurrence,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2196F3),
+                    backgroundColor: const Color(0xFF00BCD4),
                   ),
                   child: const Text('Apply'),
                 ),
@@ -181,10 +181,10 @@ class _RecurrenceBuilderDialogState extends State<RecurrenceBuilderDialog> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF2196F3) : const Color(0xFF424242),
+          color: isSelected ? const Color(0xFF00BCD4) : const Color(0xFF424242),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? const Color(0xFF2196F3) : Colors.white.withOpacity(0.1),
+            color: isSelected ? const Color(0xFF00BCD4) : Colors.white.withOpacity(0.1),
           ),
         ),
         child: Text(
@@ -242,7 +242,7 @@ class _RecurrenceBuilderDialogState extends State<RecurrenceBuilderDialog> {
               borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
             ),
             focusedBorder: const OutlineInputBorder(
-              borderSide: BorderSide(color: Color(0xFF2196F3)),
+              borderSide: BorderSide(color: Color(0xFF00BCD4)),
             ),
           ),
           items: ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']
@@ -283,7 +283,7 @@ class _RecurrenceBuilderDialogState extends State<RecurrenceBuilderDialog> {
                     borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
                   ),
                   focusedBorder: const OutlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFF2196F3)),
+                    borderSide: BorderSide(color: Color(0xFF00BCD4)),
                   ),
                 ),
                 onChanged: (value) {
@@ -351,23 +351,23 @@ class _RecurrenceBuilderDialogState extends State<RecurrenceBuilderDialog> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF2196F3).withOpacity(0.2) : const Color(0xFF424242),
+          color: isSelected ? const Color(0xFF00BCD4).withOpacity(0.2) : const Color(0xFF424242),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? const Color(0xFF2196F3) : Colors.white.withOpacity(0.1),
+            color: isSelected ? const Color(0xFF00BCD4) : Colors.white.withOpacity(0.1),
           ),
         ),
         child: Row(
           children: [
             Icon(
               isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-              color: isSelected ? const Color(0xFF2196F3) : const Color(0xFF757575),
+              color: isSelected ? const Color(0xFF00BCD4) : const Color(0xFF757575),
             ),
             const SizedBox(width: 12),
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? const Color(0xFF2196F3) : const Color(0xFFEDEDED),
+                color: isSelected ? const Color(0xFF00BCD4) : const Color(0xFFEDEDED),
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
@@ -401,10 +401,10 @@ class _RecurrenceBuilderDialogState extends State<RecurrenceBuilderDialog> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFF2196F3) : const Color(0xFF424242),
+              color: isSelected ? const Color(0xFF00BCD4) : const Color(0xFF424242),
               shape: BoxShape.circle,
               border: Border.all(
-                color: isSelected ? const Color(0xFF2196F3) : Colors.white.withOpacity(0.1),
+                color: isSelected ? const Color(0xFF00BCD4) : Colors.white.withOpacity(0.1),
               ),
             ),
             child: Center(
@@ -444,10 +444,10 @@ class _RecurrenceBuilderDialogState extends State<RecurrenceBuilderDialog> {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFF2196F3) : const Color(0xFF424242),
+              color: isSelected ? const Color(0xFF00BCD4) : const Color(0xFF424242),
               borderRadius: BorderRadius.circular(6),
               border: Border.all(
-                color: isSelected ? const Color(0xFF2196F3) : Colors.white.withOpacity(0.1),
+                color: isSelected ? const Color(0xFF00BCD4) : Colors.white.withOpacity(0.1),
               ),
             ),
             child: Center(
@@ -484,7 +484,7 @@ class _RecurrenceBuilderDialogState extends State<RecurrenceBuilderDialog> {
           value: EndType.never,
           groupValue: _endType,
           onChanged: (value) => setState(() => _endType = value!),
-          activeColor: const Color(0xFF2196F3),
+          activeColor: const Color(0xFF00BCD4),
         ),
         RadioListTile<EndType>(
           title: Row(
@@ -506,7 +506,7 @@ class _RecurrenceBuilderDialogState extends State<RecurrenceBuilderDialog> {
                       borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
                     ),
                     focusedBorder: const OutlineInputBorder(
-                      borderSide: BorderSide(color: Color(0xFF2196F3)),
+                      borderSide: BorderSide(color: Color(0xFF00BCD4)),
                     ),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                   ),
@@ -524,7 +524,7 @@ class _RecurrenceBuilderDialogState extends State<RecurrenceBuilderDialog> {
           value: EndType.afterOccurrences,
           groupValue: _endType,
           onChanged: (value) => setState(() => _endType = value!),
-          activeColor: const Color(0xFF2196F3),
+          activeColor: const Color(0xFF00BCD4),
         ),
         RadioListTile<EndType>(
           title: Row(
@@ -561,7 +561,7 @@ class _RecurrenceBuilderDialogState extends State<RecurrenceBuilderDialog> {
           value: EndType.onDate,
           groupValue: _endType,
           onChanged: (value) => setState(() => _endType = value!),
-          activeColor: const Color(0xFF2196F3),
+          activeColor: const Color(0xFF00BCD4),
         ),
       ],
     );

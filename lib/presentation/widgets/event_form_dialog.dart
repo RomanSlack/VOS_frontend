@@ -138,7 +138,7 @@ class _EventFormDialogState extends State<EventFormDialog> {
                             ),
                           ),
                           focusedBorder: const OutlineInputBorder(
-                            borderSide: BorderSide(color: Color(0xFF2196F3)),
+                            borderSide: BorderSide(color: Color(0xFF00BCD4)),
                           ),
                         ),
                         validator: (value) {
@@ -160,7 +160,7 @@ class _EventFormDialogState extends State<EventFormDialog> {
                                 _allDay = value ?? false;
                               });
                             },
-                            activeColor: const Color(0xFF2196F3),
+                            activeColor: const Color(0xFF00BCD4),
                           ),
                           const Text(
                             'All-day event',
@@ -232,7 +232,7 @@ class _EventFormDialogState extends State<EventFormDialog> {
                             ),
                           ),
                           focusedBorder: const OutlineInputBorder(
-                            borderSide: BorderSide(color: Color(0xFF2196F3)),
+                            borderSide: BorderSide(color: Color(0xFF00BCD4)),
                           ),
                         ),
                       ),
@@ -252,7 +252,7 @@ class _EventFormDialogState extends State<EventFormDialog> {
                             ),
                           ),
                           focusedBorder: const OutlineInputBorder(
-                            borderSide: BorderSide(color: Color(0xFF2196F3)),
+                            borderSide: BorderSide(color: Color(0xFF00BCD4)),
                           ),
                         ),
                       ),
@@ -286,7 +286,7 @@ class _EventFormDialogState extends State<EventFormDialog> {
                   ElevatedButton(
                     onPressed: _saveEvent,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2196F3),
+                      backgroundColor: const Color(0xFF00BCD4),
                     ),
                     child: Text(widget.event == null ? 'Create' : 'Save'),
                   ),
@@ -330,7 +330,7 @@ class _EventFormDialogState extends State<EventFormDialog> {
             borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
           ),
           focusedBorder: const OutlineInputBorder(
-            borderSide: BorderSide(color: Color(0xFF2196F3)),
+            borderSide: BorderSide(color: Color(0xFF00BCD4)),
           ),
         ),
         child: Row(
@@ -376,7 +376,7 @@ class _EventFormDialogState extends State<EventFormDialog> {
             borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
           ),
           focusedBorder: const OutlineInputBorder(
-            borderSide: BorderSide(color: Color(0xFF2196F3)),
+            borderSide: BorderSide(color: Color(0xFF00BCD4)),
           ),
         ),
         child: Row(
@@ -426,7 +426,7 @@ class _EventFormDialogState extends State<EventFormDialog> {
               },
               child: Text(
                 _recurrenceRule == null ? 'Set Recurrence' : 'Edit',
-                style: const TextStyle(color: Color(0xFF2196F3)),
+                style: const TextStyle(color: Color(0xFF00BCD4)),
               ),
             ),
           ],
@@ -500,7 +500,7 @@ class _EventFormDialogState extends State<EventFormDialog> {
                 });
               },
               backgroundColor: const Color(0xFF424242),
-              selectedColor: const Color(0xFF2196F3),
+              selectedColor: const Color(0xFF00BCD4),
               labelStyle: TextStyle(
                 color: isSelected ? Colors.white : const Color(0xFFEDEDED),
               ),

@@ -182,7 +182,7 @@ class _RemindersAppState extends State<RemindersApp> {
         ),
         child: Row(
           children: [
-            Icon(icon, color: const Color(0xFF2196F3), size: 16),
+            Icon(icon, color: const Color(0xFF00BCD4), size: 16),
             const SizedBox(width: 6),
             Text(
               label,
@@ -201,7 +201,7 @@ class _RemindersAppState extends State<RemindersApp> {
   Widget _buildContent(RemindersState state) {
     if (state is RemindersLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF2196F3)),
+        child: CircularProgressIndicator(color: Color(0xFF00BCD4)),
       );
     }
 
@@ -275,7 +275,7 @@ class _RemindersAppState extends State<RemindersApp> {
             icon: const Icon(Icons.add),
             label: const Text('Create Reminder'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2196F3),
+              backgroundColor: const Color(0xFF00BCD4),
             ),
           ),
         ],
@@ -461,13 +461,13 @@ class _RemindersAppState extends State<RemindersApp> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.event, color: Color(0xFF2196F3), size: 12),
+                      const Icon(Icons.event, color: Color(0xFF00BCD4), size: 12),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           'Event: ${reminder.eventTitle}',
                           style: const TextStyle(
-                            color: Color(0xFF2196F3),
+                            color: Color(0xFF00BCD4),
                             fontSize: 11,
                             fontStyle: FontStyle.italic,
                           ),
@@ -534,7 +534,7 @@ class _RemindersAppState extends State<RemindersApp> {
   }
 
   Color _getReminderColor(Reminder reminder) {
-    if (reminder.isEventAttached) return const Color(0xFF2196F3); // Blue
+    if (reminder.isEventAttached) return const Color(0xFF00BCD4); // Blue
     if (reminder.isRecurring) return const Color(0xFFAB47BC); // Purple
     return const Color(0xFF26A69A); // Teal
   }
