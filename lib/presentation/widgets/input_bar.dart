@@ -175,10 +175,15 @@ class _InputBarState extends State<InputBar> {
 
   @override
   Widget build(BuildContext context) {
+    // Responsive width: full width on mobile, fixed 600px on desktop
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 900;
+    final containerWidth = isMobile ? double.infinity : 600.0;
+
     return Container(
       height: 60,
-      width: 600,
-      margin: const EdgeInsets.only(bottom: 24),
+      width: containerWidth,
+      margin: EdgeInsets.only(bottom: isMobile ? 0 : 24),
       decoration: BoxDecoration(
         color: const Color(0xFF303030),
         borderRadius: BorderRadius.circular(30),
