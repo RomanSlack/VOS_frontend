@@ -18,6 +18,7 @@ class VosModal extends StatefulWidget {
   final ValueNotifier<String?>? statusNotifier;
   final ValueNotifier<bool>? isActiveNotifier;
   final ValueNotifier<ModalState>? stateNotifier;
+  final ValueNotifier<double>? zoomLevelNotifier;
 
   const VosModal({
     super.key,
@@ -34,6 +35,7 @@ class VosModal extends StatefulWidget {
     this.statusNotifier,
     this.isActiveNotifier,
     this.stateNotifier,
+    this.zoomLevelNotifier,
   });
 
   @override
@@ -317,16 +319,20 @@ class _VosModalState extends State<VosModal> {
     final currentState = widget.stateNotifier?.value ?? _state;
     if (!_isDragging || currentState == ModalState.fullscreen) return;
 
+    // Get current zoom level (default to 1.0 if not provided)
+    final zoomLevel = widget.zoomLevelNotifier?.value ?? 1.0;
+
     // Use ValueNotifier instead of setState for smooth drag without rebuilding children
-    final delta = details.globalPosition - _dragStartPosition;
+    // Convert screen-space delta to workspace-space delta by dividing by zoom
+    final delta = (details.globalPosition - _dragStartPosition) / zoomLevel;
     _position = _dragStartOffset + delta;
 
-    // Keep modal within workspace bounds
+    // Keep modal within workspace bounds (convert screen bounds to workspace bounds)
     final screenSize = MediaQuery.of(context).size;
-    final workspaceLeft = 112.0; // AppRail width + margins
-    final workspaceRight = screenSize.width - 16.0;
+    final workspaceLeft = 112.0 / zoomLevel; // AppRail width + margins
+    final workspaceRight = (screenSize.width - 16.0) / zoomLevel;
     final workspaceTop = 0.0;
-    final workspaceBottom = screenSize.height - 100.0; // Above input bar
+    final workspaceBottom = (screenSize.height - 100.0) / zoomLevel; // Above input bar
 
     _position = Offset(
       _position.dx.clamp(workspaceLeft, workspaceRight - _width),
@@ -420,15 +426,19 @@ class _VosModalState extends State<VosModal> {
   void _onResizeUpdate(DragUpdateDetails details) {
     if (!_isResizing) return;
 
+    // Get current zoom level (default to 1.0 if not provided)
+    final zoomLevel = widget.zoomLevelNotifier?.value ?? 1.0;
+
     // Use ValueNotifier instead of setState for smooth resize without rebuilding children
-    final delta = details.globalPosition - _resizeStartPosition;
+    // Convert screen-space delta to workspace-space delta by dividing by zoom
+    final delta = (details.globalPosition - _resizeStartPosition) / zoomLevel;
     _width = (_resizeStartWidth + delta.dx).clamp(_minWidth, double.infinity);
     _height = (_resizeStartHeight + delta.dy).clamp(_minHeight, double.infinity);
 
-    // Ensure modal doesn't go beyond workspace bounds
+    // Ensure modal doesn't go beyond workspace bounds (convert screen bounds to workspace bounds)
     final screenSize = MediaQuery.of(context).size;
-    final maxWidth = screenSize.width - _position.dx - 16;
-    final maxHeight = screenSize.height - _position.dy - 100;
+    final maxWidth = (screenSize.width - 16.0) / zoomLevel - _position.dx;
+    final maxHeight = (screenSize.height - 100.0) / zoomLevel - _position.dy;
 
     _width = _width.clamp(_minWidth, maxWidth);
     _height = _height.clamp(_minHeight, maxHeight);

@@ -5,12 +5,10 @@ import 'package:vos_app/presentation/widgets/chat_app.dart';
 import 'package:vos_app/presentation/widgets/calendar_app_new.dart';
 import 'package:vos_app/presentation/widgets/notes_app.dart';
 import 'package:vos_app/presentation/widgets/weather_app.dart';
-import 'package:vos_app/presentation/widgets/reminders_app.dart';
 import 'package:vos_app/core/chat_manager.dart';
 import 'package:vos_app/core/services/chat_service.dart';
 import 'package:vos_app/core/services/weather_service.dart';
 import 'package:vos_app/features/calendar/bloc/calendar_bloc.dart';
-import 'package:vos_app/features/reminders/bloc/reminders_bloc.dart';
 import 'package:vos_app/features/notes/bloc/notes_bloc.dart';
 import 'package:vos_app/features/notes/bloc/notes_event.dart';
 import 'package:vos_app/features/notes/pages/notes_page.dart';
@@ -273,12 +271,6 @@ class VosModalManager extends ChangeNotifier {
       icon = Icons.calendar_today_outlined;
       width = 900;
       height = 650;
-    } else if (appId == 'reminders') {
-      child = _buildRemindersContent();
-      title = 'Reminders';
-      icon = Icons.notifications_outlined;
-      width = 700;
-      height = 600;
     } else if (appId == 'notes') {
       child = _buildNotesContent();
       title = 'Notes';
@@ -316,6 +308,7 @@ class VosModalManager extends ChangeNotifier {
       statusNotifier: appId == 'chat' ? _chatStatusNotifier : null,
       isActiveNotifier: appId == 'chat' ? _chatIsActiveNotifier : null,
       stateNotifier: stateNotifier,
+      zoomLevelNotifier: _zoomLevelNotifier,
       child: child,
     );
 
@@ -619,13 +612,6 @@ class VosModalManager extends ChangeNotifier {
     return BlocProvider(
       create: (context) => getIt<CalendarBloc>(),
       child: const CalendarAppNew(),
-    );
-  }
-
-  Widget _buildRemindersContent() {
-    return BlocProvider(
-      create: (context) => getIt<RemindersBloc>(),
-      child: const RemindersApp(),
     );
   }
 

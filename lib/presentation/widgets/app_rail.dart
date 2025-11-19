@@ -62,13 +62,6 @@ class AppRail extends StatelessWidget {
           ),
           const SizedBox(height: iconSpacing),
           AppIcon(
-            appId: 'reminders',
-            icon: Icons.notifications_active,
-            size: iconSize,
-            modalManager: modalManager,
-          ),
-          const SizedBox(height: iconSpacing),
-          AppIcon(
             appId: 'tasks',
             icon: Icons.check_circle_outline,
             size: iconSize,
