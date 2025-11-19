@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:vos_app/core/models/notes_models.dart';
 
 class NoteCard extends StatelessWidget {
   final Note note;
   final VoidCallback? onTap;
-  final VoidCallback? onPin;
+  final VoidCallback? onStar;
   final VoidCallback? onArchive;
   final VoidCallback? onDelete;
   final Function(Note)? onDragToWorkspace;
@@ -13,7 +14,7 @@ class NoteCard extends StatelessWidget {
     Key? key,
     required this.note,
     this.onTap,
-    this.onPin,
+    this.onStar,
     this.onArchive,
     this.onDelete,
     this.onDragToWorkspace,
@@ -149,7 +150,7 @@ class NoteCard extends StatelessWidget {
                   if (note.isPinned)
                     const Padding(
                       padding: EdgeInsets.only(right: 8),
-                      child: Icon(Icons.push_pin, size: 16, color: Colors.black87),
+                      child: Icon(Icons.star, size: 16, color: Colors.amber),
                     ),
                   Expanded(
                     child: Text(
@@ -167,8 +168,8 @@ class NoteCard extends StatelessWidget {
                     icon: const Icon(Icons.more_vert, color: Colors.black87),
                     onSelected: (value) {
                       switch (value) {
-                        case 'pin':
-                          onPin?.call();
+                        case 'star':
+                          onStar?.call();
                           break;
                         case 'archive':
                           onArchive?.call();
@@ -180,12 +181,13 @@ class NoteCard extends StatelessWidget {
                     },
                     itemBuilder: (context) => [
                       PopupMenuItem(
-                        value: 'pin',
+                        value: 'star',
                         child: Row(
                           children: [
-                            Icon(note.isPinned ? Icons.push_pin_outlined : Icons.push_pin),
+                            Icon(note.isPinned ? Icons.star : Icons.star_border,
+                                 color: note.isPinned ? Colors.amber : null),
                             const SizedBox(width: 8),
-                            Text(note.isPinned ? 'Unpin' : 'Pin'),
+                            Text(note.isPinned ? 'Unstar' : 'Star'),
                           ],
                         ),
                       ),
@@ -214,18 +216,23 @@ class NoteCard extends StatelessWidget {
                 ],
               ),
 
-              // Content preview
+              // Content preview with markdown
               if (preview.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                Text(
-                  preview,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.black87,
-                    height: 1.4,
+                SizedBox(
+                  height: maxLines * 20.0, // Approximate height per line
+                  child: MarkdownBody(
+                    data: preview,
+                    styleSheet: MarkdownStyleSheet(
+                      p: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.4),
+                      h1: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      h2: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                      h3: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                      code: TextStyle(backgroundColor: Colors.grey.shade200, fontSize: 13),
+                      blockquote: TextStyle(color: Colors.grey.shade700),
+                    ),
+                    shrinkWrap: true,
                   ),
-                  maxLines: maxLines,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ],
 
