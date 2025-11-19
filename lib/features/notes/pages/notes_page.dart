@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vos_app/core/models/notes_models.dart';
@@ -21,11 +22,18 @@ class _NotesPageState extends State<NotesPage> {
   bool _showPinnedOnly = false;
   String? _selectedFolder;
   Note? _selectedNote; // Track selected note for fullscreen view
+  Timer? _autoSyncTimer;
 
   @override
   void initState() {
     super.initState();
     _loadNotes();
+    // Auto-sync every second
+    _autoSyncTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (_selectedNote == null && _searchController.text.isEmpty) {
+        _loadNotes();
+      }
+    });
   }
 
   void _loadNotes() {
@@ -71,47 +79,82 @@ class _NotesPageState extends State<NotesPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Notes'),
+        title: null, // No title for cleaner look
+        toolbarHeight: 48, // Smaller toolbar
         actions: [
-          IconButton(
-            icon: Icon(_showPinnedOnly ? Icons.push_pin : Icons.push_pin_outlined),
-            onPressed: () {
-              setState(() {
-                _showPinnedOnly = !_showPinnedOnly;
-              });
-              _loadNotes();
-            },
-            tooltip: _showPinnedOnly ? 'Show All' : 'Show Pinned Only',
-          ),
-          IconButton(
-            icon: Icon(_showArchived ? Icons.unarchive : Icons.archive_outlined),
-            onPressed: () {
-              setState(() {
-                _showArchived = !_showArchived;
-              });
-              _loadNotes();
-            },
-            tooltip: _showArchived ? 'Show Active' : 'Show Archived',
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadNotes,
+          // Compact filter chips
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FilterChip(
+                  label: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.star,
+                        size: 16,
+                        color: _showPinnedOnly ? Colors.amber : null,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(_showPinnedOnly ? 'Starred' : 'All'),
+                    ],
+                  ),
+                  selected: _showPinnedOnly,
+                  onSelected: (selected) {
+                    setState(() {
+                      _showPinnedOnly = selected;
+                    });
+                    _loadNotes();
+                  },
+                  showCheckmark: false,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                const SizedBox(width: 8),
+                FilterChip(
+                  label: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _showArchived ? Icons.unarchive : Icons.archive_outlined,
+                        size: 16,
+                        color: _showArchived ? Colors.white : null,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(_showArchived ? 'Archived' : 'Active'),
+                    ],
+                  ),
+                  selected: _showArchived,
+                  onSelected: (selected) {
+                    setState(() {
+                      _showArchived = selected;
+                    });
+                    _loadNotes();
+                  },
+                  showCheckmark: false,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ],
+            ),
           ),
         ],
       ),
       body: Column(
         children: [
-          // Search bar
+          // Search bar - more compact
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
                 hintText: 'Search notes...',
-                prefixIcon: const Icon(Icons.search),
+                prefixIcon: const Icon(Icons.search, size: 20),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.clear),
+                        icon: const Icon(Icons.clear, size: 20),
                         onPressed: () {
                           _searchController.clear();
                           _performSearch('');
@@ -119,8 +162,10 @@ class _NotesPageState extends State<NotesPage> {
                       )
                     : null,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(8),
                 ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                isDense: true,
               ),
               onSubmitted: _performSearch,
               onChanged: (value) {
@@ -257,7 +302,7 @@ class _NotesPageState extends State<NotesPage> {
                       return CustomScrollView(
                         slivers: [
                           SliverPadding(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(12),
                             sliver: SliverList(
                               delegate: SliverChildBuilderDelegate(
                                 (context, outerIndex) {
@@ -290,7 +335,7 @@ class _NotesPageState extends State<NotesPage> {
                                                   _selectedNote = note;
                                                 });
                                               },
-                                              onPin: () {
+                                              onStar: () {
                                                 context.read<NotesBloc>().add(PinNote(
                                                       PinNoteRequest(
                                                         noteId: note.id,
@@ -365,7 +410,7 @@ class _NotesPageState extends State<NotesPage> {
         });
         _loadNotes(); // Reload to get any updates
       },
-      onPin: () {
+      onStar: () {
         bloc.add(PinNote(
               PinNoteRequest(
                 noteId: _selectedNote!.id,
@@ -457,6 +502,7 @@ class _NotesPageState extends State<NotesPage> {
 
   @override
   void dispose() {
+    _autoSyncTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
