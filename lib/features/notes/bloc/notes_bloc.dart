@@ -29,7 +29,11 @@ class NotesBloc extends Bloc<NotesBlocEvent, NotesState> {
     Emitter<NotesState> emit,
   ) async {
     try {
-      emit(const NotesLoading());
+      // Don't show loading if we already have data (prevents flashing)
+      final shouldShowLoading = state is! NotesLoaded;
+      if (shouldShowLoading) {
+        emit(const NotesLoading());
+      }
 
       final response = await notesApi.listNotes(
         folder: event.folder,
@@ -55,6 +59,18 @@ class NotesBloc extends Bloc<NotesBlocEvent, NotesState> {
         final hasMore = result['has_more'] as bool? ?? false;
         final offset = result['offset'] as int? ?? 0;
 
+        // Only emit if data has actually changed
+        if (state is NotesLoaded) {
+          final currentState = state as NotesLoaded;
+          final hasChanged = currentState.notes.length != notes.length ||
+              currentState.totalCount != totalCount ||
+              !_areNotesEqual(currentState.notes, notes);
+
+          if (!hasChanged) {
+            return; // No change, don't emit
+          }
+        }
+
         emit(NotesLoaded(
           notes: notes,
           totalCount: totalCount,
@@ -70,6 +86,17 @@ class NotesBloc extends Bloc<NotesBlocEvent, NotesState> {
     } catch (e) {
       emit(NotesError('Error loading notes', details: e.toString()));
     }
+  }
+
+  bool _areNotesEqual(List<Note> list1, List<Note> list2) {
+    if (list1.length != list2.length) return false;
+    for (int i = 0; i < list1.length; i++) {
+      if (list1[i].id != list2[i].id ||
+          list1[i].updatedAt != list2[i].updatedAt) {
+        return false;
+      }
+    }
+    return true;
   }
 
   Future<void> _onLoadNote(
@@ -103,21 +130,44 @@ class NotesBloc extends Bloc<NotesBlocEvent, NotesState> {
     Emitter<NotesState> emit,
   ) async {
     try {
-      final currentState = state;
-      if (currentState is! NotesLoaded) {
-        emit(const NotesLoading());
-      }
-
       final response = await notesApi.createNote(event.request);
 
       if (response.status == 'success' && response.result != null) {
-        // Reload notes to get the updated list
-        add(const RefreshNotes());
+        // Immediately reload notes to show the new note
+        final listResponse = await notesApi.listNotes(
+          isArchived: false,
+          createdBy: userId,
+          limit: 50,
+          offset: 0,
+          sortBy: 'updated_at',
+          sortOrder: 'desc',
+        );
 
-        emit(NotesOperationSuccess(
-          message: 'Note created successfully',
-          notes: currentState is NotesLoaded ? currentState.notes : [],
-        ));
+        if (listResponse.status == 'success' && listResponse.result != null) {
+          final result = listResponse.result!;
+          final notesData = result['notes'] as List?;
+          final notes = notesData
+                  ?.map((e) => Note.fromJson(e as Map<String, dynamic>))
+                  .toList() ??
+              [];
+
+          final totalCount = result['total_count'] as int? ?? 0;
+          final hasMore = result['has_more'] as bool? ?? false;
+          final offset = result['offset'] as int? ?? 0;
+
+          emit(NotesLoaded(
+            notes: notes,
+            totalCount: totalCount,
+            hasMore: hasMore,
+            currentOffset: offset,
+          ));
+
+          // Show success message
+          emit(NotesOperationSuccess(
+            message: 'Note created successfully',
+            notes: notes,
+          ));
+        }
       } else {
         emit(NotesError(
           'Failed to create note',
