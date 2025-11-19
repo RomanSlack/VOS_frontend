@@ -5,11 +5,9 @@ import 'package:vos_app/core/services/chat_service.dart';
 import 'package:vos_app/core/services/weather_service.dart';
 import 'package:vos_app/core/services/voice_service.dart';
 import 'package:vos_app/core/services/calendar_service.dart';
-import 'package:vos_app/core/services/reminders_service.dart';
 import 'package:vos_app/core/services/notes_service.dart';
 import 'package:vos_app/core/managers/voice_manager.dart';
 import 'package:vos_app/features/calendar/bloc/calendar_bloc.dart';
-import 'package:vos_app/features/reminders/bloc/reminders_bloc.dart';
 import 'package:vos_app/features/notes/bloc/notes_bloc.dart';
 import 'package:vos_app/core/services/auth_service.dart';
 
@@ -26,7 +24,6 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton<WeatherService>(() => WeatherService());
   getIt.registerLazySingleton<VoiceService>(() => VoiceService());
   getIt.registerLazySingleton<CalendarService>(() => CalendarService());
-  getIt.registerLazySingleton<RemindersService>(() => RemindersService());
   getIt.registerLazySingleton<NotesService>(() => NotesService());
   getIt.registerLazySingleton<AuthService>(() => AuthService());
 
@@ -39,13 +36,10 @@ Future<void> configureDependencies() async {
   getIt.registerFactory<CalendarBloc>(
     () => CalendarBloc(getIt<CalendarService>().toolHelper),
   );
-  getIt.registerFactory<RemindersBloc>(
-    () => RemindersBloc(getIt<RemindersService>().toolHelper),
-  );
   getIt.registerFactory<NotesBloc>(
     () => NotesBloc(
       getIt<NotesService>().toolHelper,
-      'user', // TODO: Get actual user ID from auth context
+      'user_session_default', // TODO: Get actual user ID from auth context
     ),
   );
 
