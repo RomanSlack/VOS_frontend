@@ -163,91 +163,6 @@ class RecurrenceRule {
 }
 
 // ============================================================================
-// Reminder Models
-// ============================================================================
-
-@JsonSerializable()
-class Reminder {
-  final String id;
-  final String title;
-  final String? description;
-  @JsonKey(name: 'trigger_time')
-  final DateTime triggerTime;
-  @JsonKey(name: 'event_id')
-  final String? eventId;
-  @JsonKey(name: 'recurrence_rule')
-  final RecurrenceRule? recurrenceRule;
-  @JsonKey(name: 'target_agents')
-  final List<String>? targetAgents;
-  @JsonKey(name: 'created_at')
-  final DateTime? createdAt;
-  @JsonKey(name: 'updated_at')
-  final DateTime? updatedAt;
-  @JsonKey(name: 'event_title')
-  final String? eventTitle;
-
-  Reminder({
-    required this.id,
-    required this.title,
-    this.description,
-    required this.triggerTime,
-    this.eventId,
-    this.recurrenceRule,
-    this.targetAgents,
-    this.createdAt,
-    this.updatedAt,
-    this.eventTitle,
-  });
-
-  factory Reminder.fromJson(Map<String, dynamic> json) =>
-      _$ReminderFromJson(json);
-
-  Map<String, dynamic> toJson() => _$ReminderToJson(this);
-
-  Reminder copyWith({
-    String? id,
-    String? title,
-    String? description,
-    DateTime? triggerTime,
-    String? eventId,
-    RecurrenceRule? recurrenceRule,
-    List<String>? targetAgents,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-    String? eventTitle,
-  }) {
-    return Reminder(
-      id: id ?? this.id,
-      title: title ?? this.title,
-      description: description ?? this.description,
-      triggerTime: triggerTime ?? this.triggerTime,
-      eventId: eventId ?? this.eventId,
-      recurrenceRule: recurrenceRule ?? this.recurrenceRule,
-      targetAgents: targetAgents ?? this.targetAgents,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-      eventTitle: eventTitle ?? this.eventTitle,
-    );
-  }
-
-  ReminderType get type {
-    if (eventId != null) return ReminderType.eventAttached;
-    if (recurrenceRule != null) return ReminderType.recurring;
-    return ReminderType.standalone;
-  }
-
-  bool get isEventAttached => eventId != null;
-  bool get isRecurring => recurrenceRule != null;
-  bool get isEditable => !isEventAttached; // Event-attached reminders can't be edited directly
-}
-
-enum ReminderType {
-  standalone,
-  eventAttached,
-  recurring,
-}
-
-// ============================================================================
 // API Request/Response Models
 // ============================================================================
 
@@ -367,79 +282,6 @@ class ListEventsRequest {
   Map<String, dynamic> toJson() => _$ListEventsRequestToJson(this);
 }
 
-@JsonSerializable()
-class CreateReminderRequest {
-  final String title;
-  final String? description;
-  @JsonKey(name: 'trigger_time')
-  final String triggerTime;
-  @JsonKey(name: 'recurrence_rule')
-  final RecurrenceRule? recurrenceRule;
-  @JsonKey(name: 'target_agents')
-  final List<String>? targetAgents;
-
-  CreateReminderRequest({
-    required this.title,
-    this.description,
-    required this.triggerTime,
-    this.recurrenceRule,
-    this.targetAgents,
-  });
-
-  factory CreateReminderRequest.fromJson(Map<String, dynamic> json) =>
-      _$CreateReminderRequestFromJson(json);
-
-  Map<String, dynamic> toJson() => _$CreateReminderRequestToJson(this);
-}
-
-@JsonSerializable()
-class EditReminderRequest {
-  @JsonKey(name: 'reminder_id')
-  final String reminderId;
-  final String? title;
-  final String? description;
-  @JsonKey(name: 'trigger_time')
-  final String? triggerTime;
-  @JsonKey(name: 'recurrence_rule')
-  final RecurrenceRule? recurrenceRule;
-  @JsonKey(name: 'target_agents')
-  final List<String>? targetAgents;
-
-  EditReminderRequest({
-    required this.reminderId,
-    this.title,
-    this.description,
-    this.triggerTime,
-    this.recurrenceRule,
-    this.targetAgents,
-  });
-
-  factory EditReminderRequest.fromJson(Map<String, dynamic> json) =>
-      _$EditReminderRequestFromJson(json);
-
-  Map<String, dynamic> toJson() => _$EditReminderRequestToJson(this);
-}
-
-@JsonSerializable()
-class ListRemindersRequest {
-  @JsonKey(name: 'start_date')
-  final String? startDate;
-  @JsonKey(name: 'end_date')
-  final String? endDate;
-  final int? limit;
-
-  ListRemindersRequest({
-    this.startDate,
-    this.endDate,
-    this.limit,
-  });
-
-  factory ListRemindersRequest.fromJson(Map<String, dynamic> json) =>
-      _$ListRemindersRequestFromJson(json);
-
-  Map<String, dynamic> toJson() => _$ListRemindersRequestToJson(this);
-}
-
 // ============================================================================
 // Tool Execution Models
 // ============================================================================
@@ -502,18 +344,6 @@ class EventsListResponse {
       _$EventsListResponseFromJson(json);
 
   Map<String, dynamic> toJson() => _$EventsListResponseToJson(this);
-}
-
-@JsonSerializable()
-class RemindersListResponse {
-  final List<Reminder> reminders;
-
-  RemindersListResponse({required this.reminders});
-
-  factory RemindersListResponse.fromJson(Map<String, dynamic> json) =>
-      _$RemindersListResponseFromJson(json);
-
-  Map<String, dynamic> toJson() => _$RemindersListResponseToJson(this);
 }
 
 // ============================================================================
