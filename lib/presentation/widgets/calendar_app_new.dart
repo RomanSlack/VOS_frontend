@@ -186,7 +186,7 @@ class _CalendarAppNewState extends State<CalendarAppNew> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF2196F3) : Colors.transparent,
+          color: isSelected ? const Color(0xFF00BCD4) : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
         ),
         child: Text(
@@ -231,7 +231,7 @@ class _CalendarAppNewState extends State<CalendarAppNew> {
   Widget _buildViewContent(CalendarState state) {
     if (state is CalendarLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF2196F3)),
+        child: CircularProgressIndicator(color: Color(0xFF00BCD4)),
       );
     }
 
@@ -385,7 +385,7 @@ class _CalendarAppNewState extends State<CalendarAppNew> {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: const Color(0xFF2196F3).withOpacity(0.3),
+                    color: const Color(0xFF00BCD4).withOpacity(0.3),
                     blurRadius: 6,
                     spreadRadius: 1,
                   ),
@@ -460,7 +460,7 @@ class _CalendarAppNewState extends State<CalendarAppNew> {
   Color _getEventColor(CalendarEvent event) {
     if (event.isRecurring) return const Color(0xFFAB47BC); // Purple for recurring
     if (event.allDay) return const Color(0xFF26A69A); // Teal for all-day
-    return const Color(0xFF2196F3); // Blue for normal events
+    return const Color(0xFF00BCD4); // Blue for normal events
   }
 
   Widget _buildWeekView(List<CalendarEvent> events) {
@@ -492,13 +492,13 @@ class _CalendarAppNewState extends State<CalendarAppNew> {
                     margin: const EdgeInsets.all(2),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? const Color(0xFF2196F3)
+                          ? const Color(0xFF00BCD4)
                           : isToday
-                              ? const Color(0xFF2196F3).withOpacity(0.2)
+                              ? const Color(0xFF00BCD4).withOpacity(0.2)
                               : Colors.transparent,
                       borderRadius: BorderRadius.circular(8),
                       border: isToday && !isSelected
-                          ? Border.all(color: const Color(0xFF2196F3))
+                          ? Border.all(color: const Color(0xFF00BCD4))
                           : null,
                     ),
                     child: Column(
@@ -597,7 +597,7 @@ class _CalendarAppNewState extends State<CalendarAppNew> {
               icon: const Icon(Icons.add),
               label: const Text('Add Event'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2196F3),
+                backgroundColor: const Color(0xFF00BCD4),
               ),
             ),
           ],
@@ -688,15 +688,15 @@ class _CalendarAppNewState extends State<CalendarAppNew> {
   }
 
   Color _getDayCellColor(bool isSelected, bool isToday, bool isCurrentMonth) {
-    if (isSelected) return const Color(0xFF2196F3);
-    if (isToday) return const Color(0xFF2196F3).withOpacity(0.15);
+    if (isSelected) return const Color(0xFF00BCD4);
+    if (isToday) return const Color(0xFF00BCD4).withOpacity(0.15);
     return Colors.transparent;
   }
 
   Border? _getDayCellBorder(bool isSelected, bool isToday) {
     if (isToday && !isSelected) {
       return Border.all(
-        color: const Color(0xFF2196F3).withOpacity(0.5),
+        color: const Color(0xFF00BCD4).withOpacity(0.5),
         width: 1,
       );
     }
@@ -710,7 +710,7 @@ class _CalendarAppNewState extends State<CalendarAppNew> {
     bool isPast,
   ) {
     if (isSelected) return const Color(0xFFEDEDED);
-    if (isToday) return const Color(0xFF2196F3);
+    if (isToday) return const Color(0xFF00BCD4);
     if (!isCurrentMonth) return const Color(0xFF424242);
     if (isPast) return const Color(0xFF757575);
     return const Color(0xFFEDEDED);

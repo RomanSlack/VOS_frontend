@@ -225,7 +225,7 @@ class _CalendarAppState extends State<CalendarApp> {
           border: _getDayCellBorder(isSelected, isToday),
           boxShadow: isSelected ? [
             BoxShadow(
-              color: const Color(0xFF2196F3).withOpacity(0.3),
+              color: const Color(0xFF00BCD4).withOpacity(0.3),
               blurRadius: 6,
               spreadRadius: 1,
             ),
@@ -247,10 +247,10 @@ class _CalendarAppState extends State<CalendarApp> {
 
   Color _getDayCellColor(bool isSelected, bool isToday, bool isCurrentMonth) {
     if (isSelected) {
-      return const Color(0xFF2196F3);
+      return const Color(0xFF00BCD4);
     }
     if (isToday) {
-      return const Color(0xFF2196F3).withOpacity(0.15);
+      return const Color(0xFF00BCD4).withOpacity(0.15);
     }
     if (isCurrentMonth) {
       return Colors.transparent;
@@ -261,7 +261,7 @@ class _CalendarAppState extends State<CalendarApp> {
   Border? _getDayCellBorder(bool isSelected, bool isToday) {
     if (isToday && !isSelected) {
       return Border.all(
-        color: const Color(0xFF2196F3).withOpacity(0.5),
+        color: const Color(0xFF00BCD4).withOpacity(0.5),
         width: 1,
       );
     }
@@ -273,7 +273,7 @@ class _CalendarAppState extends State<CalendarApp> {
       return const Color(0xFFEDEDED);
     }
     if (isToday) {
-      return const Color(0xFF2196F3);
+      return const Color(0xFF00BCD4);
     }
     if (!isCurrentMonth) {
       return const Color(0xFF424242);
@@ -473,7 +473,7 @@ class _CalendarAppState extends State<CalendarApp> {
             onPressed: () => Navigator.pop(context),
             child: const Text(
               'OK',
-              style: TextStyle(color: Color(0xFF2196F3)),
+              style: TextStyle(color: Color(0xFF00BCD4)),
             ),
           ),
         ],
@@ -528,7 +528,7 @@ class _CalendarAppState extends State<CalendarApp> {
             onPressed: () => Navigator.pop(context),
             child: const Text(
               'Close',
-              style: TextStyle(color: Color(0xFF2196F3)),
+              style: TextStyle(color: Color(0xFF00BCD4)),
             ),
           ),
         ],

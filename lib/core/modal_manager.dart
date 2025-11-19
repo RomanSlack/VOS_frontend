@@ -5,10 +5,13 @@ import 'package:vos_app/presentation/widgets/chat_app.dart';
 import 'package:vos_app/presentation/widgets/calendar_app_new.dart';
 import 'package:vos_app/presentation/widgets/notes_app.dart';
 import 'package:vos_app/presentation/widgets/weather_app.dart';
+import 'package:vos_app/presentation/widgets/reminders_app.dart';
+import 'package:vos_app/presentation/widgets/browser_app.dart';
 import 'package:vos_app/core/chat_manager.dart';
 import 'package:vos_app/core/services/chat_service.dart';
 import 'package:vos_app/core/services/weather_service.dart';
 import 'package:vos_app/features/calendar/bloc/calendar_bloc.dart';
+import 'package:vos_app/features/reminders/bloc/reminders_bloc.dart';
 import 'package:vos_app/features/notes/bloc/notes_bloc.dart';
 import 'package:vos_app/features/notes/bloc/notes_event.dart';
 import 'package:vos_app/features/notes/pages/notes_page.dart';
@@ -168,13 +171,7 @@ class VosModalManager extends ChangeNotifier {
       accentColor: Color(0xFF9C27B0),
       contentBuilder: _buildTasksContent,
     ),
-    AppDefinition(
-      id: 'browser',
-      title: 'Browser',
-      icon: Icons.language_outlined,
-      accentColor: Color(0xFFFF5722),
-      contentBuilder: _buildBrowserContent,
-    ),
+    // Note: Browser app is handled specially - see openModal method
     AppDefinition(
       id: 'analytics',
       title: 'Analytics',
@@ -271,6 +268,12 @@ class VosModalManager extends ChangeNotifier {
       icon = Icons.calendar_today_outlined;
       width = 900;
       height = 650;
+    } else if (appId == 'reminders') {
+      child = _buildRemindersContent();
+      title = 'Reminders';
+      icon = Icons.notifications_outlined;
+      width = 700;
+      height = 600;
     } else if (appId == 'notes') {
       child = _buildNotesContent();
       title = 'Notes';
@@ -283,6 +286,12 @@ class VosModalManager extends ChangeNotifier {
       icon = Icons.cloud_outlined;
       width = 480;
       height = 400;
+    } else if (appId == 'browser') {
+      child = _buildBrowserContent();
+      title = 'Browser';
+      icon = Icons.language_outlined;
+      width = 900;
+      height = 650;
     } else {
       final app = apps.firstWhere((a) => a.id == appId);
       child = app.contentBuilder();
@@ -308,7 +317,6 @@ class VosModalManager extends ChangeNotifier {
       statusNotifier: appId == 'chat' ? _chatStatusNotifier : null,
       isActiveNotifier: appId == 'chat' ? _chatIsActiveNotifier : null,
       stateNotifier: stateNotifier,
-      zoomLevelNotifier: _zoomLevelNotifier,
       child: child,
     );
 
@@ -526,27 +534,9 @@ class VosModalManager extends ChangeNotifier {
   }
 
 
-  static Widget _buildBrowserContent() {
-    return Container(
-      color: const Color(0xFF212121),
-      child: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.language_outlined, size: 64, color: Color(0xFFFF5722)),
-            SizedBox(height: 16),
-            Text(
-              'Browser App',
-              style: TextStyle(color: Color(0xFFEDEDED), fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Browse the web',
-              style: TextStyle(color: Color(0xFF757575), fontSize: 14),
-            ),
-          ],
-        ),
-      ),
+  Widget _buildBrowserContent() {
+    return BrowserApp(
+      chatManager: _chatManager,
     );
   }
 
@@ -612,6 +602,13 @@ class VosModalManager extends ChangeNotifier {
     return BlocProvider(
       create: (context) => getIt<CalendarBloc>(),
       child: const CalendarAppNew(),
+    );
+  }
+
+  Widget _buildRemindersContent() {
+    return BlocProvider(
+      create: (context) => getIt<RemindersBloc>(),
+      child: const RemindersApp(),
     );
   }
 

@@ -139,7 +139,7 @@ class EventDetailDialog extends StatelessWidget {
                       icon: const Icon(Icons.edit),
                       label: const Text('Edit'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2196F3),
+                        backgroundColor: const Color(0xFF00BCD4),
                       ),
                     ),
                   ],
