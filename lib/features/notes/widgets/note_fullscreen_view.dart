@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:vos_app/core/models/notes_models.dart';
 import 'package:vos_app/core/services/notes_service.dart';
 import 'package:vos_app/core/di/injection.dart';
@@ -7,7 +8,7 @@ import 'package:vos_app/core/di/injection.dart';
 class NoteFullscreenView extends StatefulWidget {
   final Note note;
   final VoidCallback onBack;
-  final VoidCallback? onPin;
+  final VoidCallback? onStar;
   final VoidCallback? onArchive;
   final VoidCallback? onDelete;
   final Function(UpdateNoteRequest)? onUpdate;
@@ -16,7 +17,7 @@ class NoteFullscreenView extends StatefulWidget {
     Key? key,
     required this.note,
     required this.onBack,
-    this.onPin,
+    this.onStar,
     this.onArchive,
     this.onDelete,
     this.onUpdate,
@@ -229,7 +230,7 @@ class _NoteFullscreenViewState extends State<NoteFullscreenView> {
           // Title
           Expanded(
             child: Text(
-              widget.note.isPinned ? 'Pinned Note' : 'Note',
+              widget.note.isPinned ? 'Starred Note' : 'Note',
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -246,14 +247,14 @@ class _NoteFullscreenViewState extends State<NoteFullscreenView> {
             onPressed: _toggleEditMode,
             tooltip: _isEditMode ? 'Save' : 'Edit',
           ),
-          // Pin button
+          // Star button
           IconButton(
             icon: Icon(
-              widget.note.isPinned ? Icons.push_pin : Icons.push_pin_outlined,
-              color: const Color(0xFFEDEDED),
+              widget.note.isPinned ? Icons.star : Icons.star_border,
+              color: widget.note.isPinned ? Colors.amber : const Color(0xFFEDEDED),
             ),
-            onPressed: widget.onPin,
-            tooltip: widget.note.isPinned ? 'Unpin' : 'Pin',
+            onPressed: widget.onStar,
+            tooltip: widget.note.isPinned ? 'Unstar' : 'Star',
           ),
           // Archive button
           IconButton(
@@ -415,14 +416,25 @@ class _NoteFullscreenViewState extends State<NoteFullscreenView> {
           Divider(color: Colors.white.withOpacity(0.1)),
           const SizedBox(height: 24),
 
-          // Content
+          // Content with markdown rendering
           if (!_isLoadingContent)
-            SelectableText(
-              _fullContent,
-              style: const TextStyle(
-                fontSize: 16,
-                height: 1.6,
-                color: Color(0xFFEDEDED),
+            Markdown(
+              data: _fullContent,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              selectable: true,
+              styleSheet: MarkdownStyleSheet(
+                p: const TextStyle(fontSize: 16, height: 1.6, color: Color(0xFFEDEDED)),
+                h1: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFFEDEDED)),
+                h2: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFFEDEDED)),
+                h3: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFFEDEDED)),
+                h4: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFFEDEDED)),
+                h5: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFEDEDED)),
+                h6: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFEDEDED)),
+                code: const TextStyle(backgroundColor: Color(0xFF424242), color: Color(0xFFFF9800), fontSize: 14),
+                blockquote: const TextStyle(color: Color(0xFF999999)),
+                listBullet: const TextStyle(color: Color(0xFFEDEDED)),
+                a: const TextStyle(color: Color(0xFF64B5F6), decoration: TextDecoration.underline),
               ),
             ),
         ],
