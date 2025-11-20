@@ -28,8 +28,11 @@ class DesktopHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
+        clipBehavior: Clip.none, // Don't clip zoomed content
         children: [
-          // Zoomable workspace area (everything except AppRail, InputBar, and ZoomControls)
+          // Fixed workspace grid (not affected by zoom)
+          const Workspace(),
+          // Zoomable workspace area (modals and sticky notes only)
           _ZoomableWorkspace(
             modalManager: modalManager,
             stickyNotesManager: stickyNotesManager,
@@ -76,8 +79,8 @@ class _ZoomableWorkspace extends StatelessWidget {
           scale: zoomLevel,
           alignment: Alignment.center,
           child: Stack(
+            clipBehavior: Clip.none, // Don't clip modals that extend beyond bounds
             children: [
-              const Workspace(), // Grid background behind everything
               // DragTarget for sticky notes
               DragTarget<Note>(
                 onWillAccept: (note) => note != null,
@@ -122,11 +125,17 @@ class _OptimizedModalStack extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Get screen size from outside Transform.scale
+    final screenSize = MediaQuery.of(context).size;
+
     return ListenableBuilder(
       listenable: modalManager,
       builder: (context, child) {
         final openModals = modalManager.openModals;
         final minimizedModals = modalManager.minimizedModals;
+
+        // Set screen size in modal manager for new modals
+        modalManager.setScreenSize(screenSize);
 
         // Combine all modals into one list to maintain consistent keys
         final allModals = [...openModals, ...minimizedModals];
@@ -134,6 +143,7 @@ class _OptimizedModalStack extends StatelessWidget {
         // Render all modals with consistent keys
         // Modals handle their own visibility based on state
         return Stack(
+          clipBehavior: Clip.none, // Don't clip modals
           children: allModals.map((modalInstance) {
             return KeyedSubtree(
               key: ValueKey(modalInstance.appId),
@@ -160,6 +170,7 @@ class _StickyNotesOverlay extends StatelessWidget {
       listenable: stickyNotesManager,
       builder: (context, child) {
         return Stack(
+          clipBehavior: Clip.none, // Don't clip sticky notes
           children: stickyNotesManager.stickyNotes.map((stickyNote) {
             return StickyNote(
               key: ValueKey(stickyNote.id),

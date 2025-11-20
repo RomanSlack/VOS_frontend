@@ -35,14 +35,6 @@ class _HomePageState extends State<HomePage> {
     final calendarService = getIt<CalendarService>();
     final notificationService = calendarService.notificationService;
 
-    // Setup callback for reminder notifications
-    notificationService.onReminderTriggered = (reminder) {
-      logger.i('HomePage: Reminder triggered: ${reminder.title}');
-      if (mounted) {
-        NotificationToastManager.show(context, reminder);
-      }
-    };
-
     // Connect to WebSocket
     notificationService.connect().then((_) {
       logger.i('HomePage: Calendar notification service connected');

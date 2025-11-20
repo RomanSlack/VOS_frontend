@@ -326,3 +326,143 @@ class AudioReceivedPayload {
     required this.timestamp,
   });
 }
+
+/// Batch transcription job status
+enum BatchTranscriptionStatus {
+  pending,
+  processing,
+  completed,
+  failed,
+}
+
+/// Batch transcription job response (after file upload)
+@JsonSerializable()
+class BatchTranscriptionJob {
+  @JsonKey(name: 'job_id')
+  final String jobId;
+  final String status;
+  final String filename;
+
+  const BatchTranscriptionJob({
+    required this.jobId,
+    required this.status,
+    required this.filename,
+  });
+
+  factory BatchTranscriptionJob.fromJson(Map<String, dynamic> json) =>
+      _$BatchTranscriptionJobFromJson(json);
+
+  Map<String, dynamic> toJson() => _$BatchTranscriptionJobToJson(this);
+
+  BatchTranscriptionStatus get statusEnum {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return BatchTranscriptionStatus.pending;
+      case 'processing':
+        return BatchTranscriptionStatus.processing;
+      case 'completed':
+        return BatchTranscriptionStatus.completed;
+      case 'failed':
+        return BatchTranscriptionStatus.failed;
+      default:
+        return BatchTranscriptionStatus.pending;
+    }
+  }
+}
+
+/// Batch transcription job status check response
+@JsonSerializable()
+class BatchTranscriptionStatusResponse {
+  @JsonKey(name: 'job_id')
+  final String jobId;
+  final String status;
+  final String filename;
+  @JsonKey(name: 'created_at')
+  final String? createdAt;
+  @JsonKey(name: 'completed_at')
+  final String? completedAt;
+  final String? error;
+
+  const BatchTranscriptionStatusResponse({
+    required this.jobId,
+    required this.status,
+    required this.filename,
+    this.createdAt,
+    this.completedAt,
+    this.error,
+  });
+
+  factory BatchTranscriptionStatusResponse.fromJson(
+          Map<String, dynamic> json) =>
+      _$BatchTranscriptionStatusResponseFromJson(json);
+
+  Map<String, dynamic> toJson() =>
+      _$BatchTranscriptionStatusResponseToJson(this);
+
+  BatchTranscriptionStatus get statusEnum {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return BatchTranscriptionStatus.pending;
+      case 'processing':
+        return BatchTranscriptionStatus.processing;
+      case 'completed':
+        return BatchTranscriptionStatus.completed;
+      case 'failed':
+        return BatchTranscriptionStatus.failed;
+      default:
+        return BatchTranscriptionStatus.pending;
+    }
+  }
+}
+
+/// Utterance from speaker diarization
+@JsonSerializable()
+class TranscriptionUtterance {
+  final String speaker;
+  final String text;
+  final int start;
+  final int end;
+  final double confidence;
+
+  const TranscriptionUtterance({
+    required this.speaker,
+    required this.text,
+    required this.start,
+    required this.end,
+    required this.confidence,
+  });
+
+  factory TranscriptionUtterance.fromJson(Map<String, dynamic> json) =>
+      _$TranscriptionUtteranceFromJson(json);
+
+  Map<String, dynamic> toJson() => _$TranscriptionUtteranceToJson(this);
+}
+
+/// Batch transcription result response
+@JsonSerializable()
+class BatchTranscriptionResult {
+  @JsonKey(name: 'job_id')
+  final String jobId;
+  final String status;
+  final String? text;
+  final double? confidence;
+  @JsonKey(name: 'audio_duration')
+  final double? audioDuration; // Duration in seconds
+  final List<TranscriptionUtterance>? utterances;
+  final String? error;
+
+  const BatchTranscriptionResult({
+    required this.jobId,
+    required this.status,
+    this.text,
+    this.confidence,
+    this.audioDuration,
+    this.utterances,
+    this.error,
+  });
+
+  factory BatchTranscriptionResult.fromJson(Map<String, dynamic> json) =>
+      _$BatchTranscriptionResultFromJson(json);
+
+  Map<String, dynamic> toJson() => _$BatchTranscriptionResultToJson(this);
+}

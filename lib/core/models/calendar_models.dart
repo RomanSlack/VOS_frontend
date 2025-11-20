@@ -416,3 +416,40 @@ class ConflictDetail {
 
   Map<String, dynamic> toJson() => _$ConflictDetailToJson(this);
 }
+
+// ============================================================================
+// Reminder Models
+// ============================================================================
+
+@JsonSerializable()
+class Reminder {
+  final String id;
+  final String title;
+  final String? description;
+  @JsonKey(name: 'trigger_time')
+  final DateTime triggerTime;
+  @JsonKey(name: 'is_event_attached')
+  final bool isEventAttached;
+  @JsonKey(name: 'event_title')
+  final String? eventTitle;
+  @JsonKey(name: 'event_id')
+  final String? eventId;
+  @JsonKey(name: 'created_at')
+  final DateTime? createdAt;
+
+  const Reminder({
+    required this.id,
+    required this.title,
+    this.description,
+    required this.triggerTime,
+    this.isEventAttached = false,
+    this.eventTitle,
+    this.eventId,
+    this.createdAt,
+  });
+
+  factory Reminder.fromJson(Map<String, dynamic> json) =>
+      _$ReminderFromJson(json);
+
+  Map<String, dynamic> toJson() => _$ReminderToJson(this);
+}

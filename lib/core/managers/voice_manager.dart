@@ -2,11 +2,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:vos_app/core/models/voice_models.dart';
 import 'package:vos_app/core/services/voice_service.dart';
+import 'package:vos_app/core/services/voice_batch_service.dart';
 
 /// Voice UI state manager
 /// Extends ChangeNotifier to notify UI of state changes
 class VoiceManager extends ChangeNotifier {
   final VoiceService _voiceService;
+  final VoiceBatchService _batchService;
 
   // State
   VoiceState _voiceState = VoiceState.idle;
@@ -32,6 +34,13 @@ class VoiceManager extends ChangeNotifier {
   // Error
   VoiceErrorPayload? _lastError;
 
+  // Batch recording state
+  bool _isBatchRecordingLocked = false;
+  BatchRecordingStatus _batchStatus = BatchRecordingStatus.idle;
+  Duration? _batchRecordingDuration;
+  BatchTranscriptionResult? _lastBatchResult;
+  String? _batchError;
+
   // Subscriptions
   StreamSubscription? _connectionStateSubscription;
   StreamSubscription? _voiceStateSubscription;
@@ -44,6 +53,12 @@ class VoiceManager extends ChangeNotifier {
   StreamSubscription? _speakingCompletedSubscription;
   StreamSubscription? _audioReceivedSubscription;
   StreamSubscription? _errorSubscription;
+
+  // Batch service subscriptions
+  StreamSubscription? _batchStatusSubscription;
+  StreamSubscription? _batchResultSubscription;
+  StreamSubscription? _batchErrorSubscription;
+  StreamSubscription? _batchDurationSubscription;
 
   // Public getters
   VoiceState get voiceState => _voiceState;
@@ -66,6 +81,18 @@ class VoiceManager extends ChangeNotifier {
   bool get isProcessing => _voiceState == VoiceState.processing;
   bool get isSpeaking => _voiceState == VoiceState.speaking;
   bool get hasError => _voiceState == VoiceState.error;
+
+  // Batch recording getters
+  bool get isBatchRecordingLocked => _isBatchRecordingLocked;
+  BatchRecordingStatus get batchStatus => _batchStatus;
+  Duration? get batchRecordingDuration => _batchRecordingDuration;
+  BatchTranscriptionResult? get lastBatchResult => _lastBatchResult;
+  String? get batchError => _batchError;
+  bool get isBatchRecording =>
+      _batchStatus == BatchRecordingStatus.recording ||
+      _batchStatus == BatchRecordingStatus.uploading ||
+      _batchStatus == BatchRecordingStatus.transcribing;
+  bool get isBatchIdle => _batchStatus == BatchRecordingStatus.idle;
 
   /// Get combined transcription (interim + final)
   String get currentTranscription {
@@ -98,8 +125,9 @@ class VoiceManager extends ChangeNotifier {
     }
   }
 
-  VoiceManager(this._voiceService) {
+  VoiceManager(this._voiceService, this._batchService) {
     _setupListeners();
+    _setupBatchListeners();
   }
 
   /// Setup listeners for voice service streams
@@ -185,6 +213,34 @@ class VoiceManager extends ChangeNotifier {
     });
   }
 
+  /// Setup listeners for batch service streams
+  void _setupBatchListeners() {
+    _batchStatusSubscription = _batchService.statusStream.listen((status) {
+      _batchStatus = status;
+      debugPrint('🎙️ Batch status: $status');
+      notifyListeners();
+    });
+
+    _batchResultSubscription =
+        _batchService.transcriptionResultStream.listen((result) {
+      _lastBatchResult = result;
+      debugPrint('✅ Batch result: ${result.text}');
+      notifyListeners();
+    });
+
+    _batchErrorSubscription = _batchService.errorStream.listen((error) {
+      _batchError = error;
+      debugPrint('❌ Batch error: $error');
+      notifyListeners();
+    });
+
+    _batchDurationSubscription =
+        _batchService.recordingDurationStream.listen((duration) {
+      _batchRecordingDuration = duration;
+      notifyListeners();
+    });
+  }
+
   /// Connect to voice session
   Future<void> connect(String sessionId) async {
     _sessionId = sessionId;
@@ -246,6 +302,66 @@ class VoiceManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Batch recording methods
+
+  /// Start batch recording (hold-to-record mode)
+  Future<void> startBatchRecording() async {
+    // Try to use existing token, or request a new one
+    String? token = _voiceService.currentToken;
+
+    debugPrint('Batch recording: existing token available: ${token != null}');
+
+    if (token == null) {
+      // No token available, request one
+      debugPrint('Requesting new token for batch recording...');
+      final tokenResponse = await _voiceService.requestToken(_sessionId ?? 'batch');
+      token = tokenResponse.token;
+      debugPrint('Got new token, length: ${token.length}');
+    }
+
+    _batchService.setAuthToken(token, sessionId: _sessionId);
+    debugPrint('Token set on batch service with sessionId: $_sessionId');
+
+    await _batchService.startRecording();
+    _isBatchRecordingLocked = false;
+    _batchError = null;
+    notifyListeners();
+  }
+
+  /// Stop batch recording and upload for transcription
+  Future<void> stopBatchRecording() async {
+    await _batchService.stopRecordingAndUpload();
+    _isBatchRecordingLocked = false;
+    notifyListeners();
+  }
+
+  /// Cancel batch recording without uploading
+  Future<void> cancelBatchRecording() async {
+    await _batchService.cancelRecording();
+    _isBatchRecordingLocked = false;
+    notifyListeners();
+  }
+
+  /// Lock batch recording (Discord-style drag-up-to-lock)
+  void lockBatchRecording() {
+    _isBatchRecordingLocked = true;
+    notifyListeners();
+  }
+
+  /// Unlock batch recording
+  void unlockBatchRecording() {
+    _isBatchRecordingLocked = false;
+    notifyListeners();
+  }
+
+  /// Clear batch result and error
+  void clearBatchState() {
+    _lastBatchResult = null;
+    _batchError = null;
+    _batchRecordingDuration = null;
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     // Cancel all subscriptions
@@ -260,6 +376,12 @@ class VoiceManager extends ChangeNotifier {
     _speakingCompletedSubscription?.cancel();
     _audioReceivedSubscription?.cancel();
     _errorSubscription?.cancel();
+
+    // Cancel batch subscriptions
+    _batchStatusSubscription?.cancel();
+    _batchResultSubscription?.cancel();
+    _batchErrorSubscription?.cancel();
+    _batchDurationSubscription?.cancel();
 
     super.dispose();
   }

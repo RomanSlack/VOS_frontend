@@ -4,6 +4,7 @@ import 'package:vos_app/core/di/injection.config.dart';
 import 'package:vos_app/core/services/chat_service.dart';
 import 'package:vos_app/core/services/weather_service.dart';
 import 'package:vos_app/core/services/voice_service.dart';
+import 'package:vos_app/core/services/voice_batch_service.dart';
 import 'package:vos_app/core/services/calendar_service.dart';
 import 'package:vos_app/core/services/notes_service.dart';
 import 'package:vos_app/core/managers/voice_manager.dart';
@@ -23,13 +24,17 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton<ChatService>(() => ChatService());
   getIt.registerLazySingleton<WeatherService>(() => WeatherService());
   getIt.registerLazySingleton<VoiceService>(() => VoiceService());
+  getIt.registerLazySingleton<VoiceBatchService>(() => VoiceBatchService());
   getIt.registerLazySingleton<CalendarService>(() => CalendarService());
   getIt.registerLazySingleton<NotesService>(() => NotesService());
   getIt.registerLazySingleton<AuthService>(() => AuthService());
 
-  // Register voice manager (depends on VoiceService)
+  // Register voice manager (depends on VoiceService and VoiceBatchService)
   getIt.registerLazySingleton<VoiceManager>(
-    () => VoiceManager(getIt<VoiceService>()),
+    () => VoiceManager(
+      getIt<VoiceService>(),
+      getIt<VoiceBatchService>(),
+    ),
   );
 
   // Register BLoCs

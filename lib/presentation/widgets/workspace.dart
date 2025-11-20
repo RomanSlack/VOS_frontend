@@ -5,6 +5,9 @@ class Workspace extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Get screen size to ensure grid covers entire scaled area
+    final screenSize = MediaQuery.of(context).size;
+
     return Positioned.fill(
       left: 112, // AppRail width (80) + margin (16) * 2
       right: 16, // Matching app rail margin

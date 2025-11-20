@@ -112,6 +112,9 @@ class VoiceService {
   final _audioReceivedController =
       StreamController<AudioReceivedPayload>.broadcast();
 
+  // Public getters
+  String? get currentToken => _currentToken;
+
   // Public stream getters
   Stream<VoiceConnectionState> get connectionStateStream =>
       _connectionStateController.stream;
@@ -204,6 +207,11 @@ class VoiceService {
       _updateConnectionState(VoiceConnectionState.disconnected);
       _scheduleReconnect();
     }
+  }
+
+  /// Request JWT token from backend (public method for external use)
+  Future<VoiceTokenResponse> requestToken(String sessionId) async {
+    return await _getVoiceToken(sessionId);
   }
 
   /// Request JWT token from backend

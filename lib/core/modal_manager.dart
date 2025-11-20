@@ -5,13 +5,11 @@ import 'package:vos_app/presentation/widgets/chat_app.dart';
 import 'package:vos_app/presentation/widgets/calendar_app_new.dart';
 import 'package:vos_app/presentation/widgets/notes_app.dart';
 import 'package:vos_app/presentation/widgets/weather_app.dart';
-import 'package:vos_app/presentation/widgets/reminders_app.dart';
 import 'package:vos_app/presentation/widgets/browser_app.dart';
 import 'package:vos_app/core/chat_manager.dart';
 import 'package:vos_app/core/services/chat_service.dart';
 import 'package:vos_app/core/services/weather_service.dart';
 import 'package:vos_app/features/calendar/bloc/calendar_bloc.dart';
-import 'package:vos_app/features/reminders/bloc/reminders_bloc.dart';
 import 'package:vos_app/features/notes/bloc/notes_bloc.dart';
 import 'package:vos_app/features/notes/bloc/notes_event.dart';
 import 'package:vos_app/features/notes/pages/notes_page.dart';
@@ -75,6 +73,9 @@ class VosModalManager extends ChangeNotifier {
   static const double minZoom = 0.5;
   static const double maxZoom = 2.0;
   static const double zoomStep = 0.1;
+
+  // Screen size (from outside Transform.scale)
+  Size? _screenSize;
 
   // Cache for performance
   List<ModalInstance>? _openModalsCache;
@@ -268,12 +269,6 @@ class VosModalManager extends ChangeNotifier {
       icon = Icons.calendar_today_outlined;
       width = 900;
       height = 650;
-    } else if (appId == 'reminders') {
-      child = _buildRemindersContent();
-      title = 'Reminders';
-      icon = Icons.notifications_outlined;
-      width = 700;
-      height = 600;
     } else if (appId == 'notes') {
       child = _buildNotesContent();
       title = 'Notes';
@@ -317,6 +312,8 @@ class VosModalManager extends ChangeNotifier {
       statusNotifier: appId == 'chat' ? _chatStatusNotifier : null,
       isActiveNotifier: appId == 'chat' ? _chatIsActiveNotifier : null,
       stateNotifier: stateNotifier,
+      zoomLevelNotifier: _zoomLevelNotifier,
+      screenSize: _screenSize,
       child: child,
     );
 
@@ -483,6 +480,11 @@ class VosModalManager extends ChangeNotifier {
     }
   }
 
+  // Set screen size from outside Transform.scale
+  void setScreenSize(Size size) {
+    _screenSize = size;
+  }
+
   // Content builders for each app
   static Widget _buildPhoneContent() {
     return Container(
@@ -602,13 +604,6 @@ class VosModalManager extends ChangeNotifier {
     return BlocProvider(
       create: (context) => getIt<CalendarBloc>(),
       child: const CalendarAppNew(),
-    );
-  }
-
-  Widget _buildRemindersContent() {
-    return BlocProvider(
-      create: (context) => getIt<RemindersBloc>(),
-      child: const RemindersApp(),
     );
   }
 
