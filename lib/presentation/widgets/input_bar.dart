@@ -22,7 +22,7 @@ class InputBar extends StatefulWidget {
   State<InputBar> createState() => _InputBarState();
 }
 
-class _InputBarState extends State<InputBar> {
+class _InputBarState extends State<InputBar> with SingleTickerProviderStateMixin {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   late final VoiceManager _voiceManager;
@@ -37,10 +37,27 @@ class _InputBarState extends State<InputBar> {
   double _currentDragY = 0;
   static const double _lockThreshold = 100; // pixels to drag up to lock
 
+  // Pulse animation for processing state
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+
   @override
   void initState() {
     super.initState();
     _voiceManager = getIt<VoiceManager>();
+
+    // Initialize pulse animation for processing state
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    )..repeat(reverse: true);
+
+    _pulseAnimation = Tween<double>(begin: 0.7, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _pulseController,
+        curve: Curves.easeInOut,
+      ),
+    );
 
     // Connect to voice service using the same session ID as chat
     _voiceManager.connect(VosModalManager.defaultSessionId);
@@ -51,14 +68,26 @@ class _InputBarState extends State<InputBar> {
 
   void _onVoiceStateChanged() {
     // When we get a final transcription from streaming, auto-send as voice message
+    // But NOT if we're using batch recording (to avoid duplicates)
     final transcription = _voiceManager.finalTranscription;
-    if (transcription.isNotEmpty && _controller.text != transcription) {
+    final isBatchMode = _voiceManager.isBatchRecording ||
+                        _voiceManager.isBatchRecordingLocked ||
+                        _voiceManager.batchStatus == BatchRecordingStatus.uploading ||
+                        _voiceManager.batchStatus == BatchRecordingStatus.transcribing;
+
+    if (transcription.isNotEmpty &&
+        _controller.text != transcription &&
+        !isBatchMode) {
       _controller.text = transcription;
 
       // Add a small delay before auto-sending to give user time to review
       Future.delayed(const Duration(milliseconds: 800), () {
         // Check if the transcription is still the same (user didn't edit)
-        if (_controller.text == transcription) {
+        // and we're still not in batch mode
+        final stillNotBatchMode = !_voiceManager.isBatchRecording &&
+                                  !_voiceManager.isBatchRecordingLocked &&
+                                  _voiceManager.batchStatus == BatchRecordingStatus.idle;
+        if (_controller.text == transcription && stillNotBatchMode) {
           _handleVoiceSubmit(transcription);
         }
       });
@@ -87,6 +116,7 @@ class _InputBarState extends State<InputBar> {
   @override
   void dispose() {
     _holdDurationTimer?.cancel();
+    _pulseController.dispose();
     _voiceManager.removeListener(_onVoiceStateChanged);
     _voiceManager.disconnect();
     _controller.dispose();
@@ -330,10 +360,15 @@ class _InputBarState extends State<InputBar> {
                 final isListening = _voiceManager.isListening;
                 final isBatchRecording = _voiceManager.isBatchRecording;
                 final isLocked = _voiceManager.isBatchRecordingLocked;
+                final batchStatus = _voiceManager.batchStatus;
+                final isProcessing = batchStatus == BatchRecordingStatus.uploading ||
+                                     batchStatus == BatchRecordingStatus.transcribing;
 
                 // Determine background color based on state
                 Color? backgroundColor;
-                if (isLocked) {
+                if (isProcessing) {
+                  backgroundColor = Colors.orange.shade700; // Processing = orange (will pulse)
+                } else if (isLocked) {
                   backgroundColor = Colors.blue.shade700; // Locked = blue
                 } else if (_isHolding) {
                   backgroundColor = Colors.orange.shade700; // Holding = orange
@@ -344,20 +379,39 @@ class _InputBarState extends State<InputBar> {
                 // Show lock icon when locked, otherwise mic icon
                 final icon = isLocked
                     ? Icons.lock
-                    : (isListening || isBatchRecording ? Icons.mic : Icons.mic_none_outlined);
+                    : (isListening || isBatchRecording || isProcessing ? Icons.mic : Icons.mic_none_outlined);
+
+                Widget micButton = CircleIcon(
+                  icon: icon,
+                  size: 40,
+                  useFontAwesome: false,
+                  onPressed: null, // Disabled, using GestureDetector instead
+                  backgroundColor: backgroundColor,
+                );
+
+                // Wrap with pulse animation when processing
+                if (isProcessing) {
+                  micButton = AnimatedBuilder(
+                    animation: _pulseAnimation,
+                    builder: (context, child) {
+                      return Transform.scale(
+                        scale: _pulseAnimation.value,
+                        child: Opacity(
+                          opacity: 0.5 + (_pulseAnimation.value * 0.5),
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: micButton,
+                  );
+                }
 
                 return GestureDetector(
                   onTap: _onMicTap,
                   onLongPressStart: _onMicLongPressStart,
                   onLongPressMoveUpdate: _onMicLongPressMoveUpdate,
                   onLongPressEnd: _onMicLongPressEnd,
-                  child: CircleIcon(
-                    icon: icon,
-                    size: 40,
-                    useFontAwesome: false,
-                    onPressed: null, // Disabled, using GestureDetector instead
-                    backgroundColor: backgroundColor,
-                  ),
+                  child: micButton,
                 );
               },
             ),
@@ -388,27 +442,6 @@ class _InputBarState extends State<InputBar> {
                     _voiceManager.cancelBatchRecording();
                   },
                 ),
-              );
-            }
-            return const SizedBox.shrink();
-          },
-        ),
-        // Processing overlay during upload/transcription
-        ListenableBuilder(
-          listenable: _voiceManager,
-          builder: (context, child) {
-            final status = _voiceManager.batchStatus;
-            String? statusText;
-
-            if (status == BatchRecordingStatus.uploading) {
-              statusText = 'Uploading audio...';
-            } else if (status == BatchRecordingStatus.transcribing) {
-              statusText = 'Transcribing...';
-            }
-
-            if (statusText != null) {
-              return Positioned.fill(
-                child: VoiceProcessingOverlay(status: statusText),
               );
             }
             return const SizedBox.shrink();
