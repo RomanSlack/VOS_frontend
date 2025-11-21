@@ -55,6 +55,10 @@ class VoiceService {
   // Audio playback
   final AudioPlayer _player = AudioPlayer();
 
+  // TTS Settings (can be set before connect)
+  String? _ttsProvider;
+  String? _ttsVoiceId;
+
   VoiceService() {
     _initializeDio();
   }
@@ -114,6 +118,16 @@ class VoiceService {
 
   // Public getters
   String? get currentToken => _currentToken;
+  String? get ttsProvider => _ttsProvider;
+  String? get ttsVoiceId => _ttsVoiceId;
+
+  /// Configure TTS settings for the session
+  /// Call this before connect() or pass settings to connect()
+  void configureTts({String? provider, String? voiceId}) {
+    _ttsProvider = provider;
+    _ttsVoiceId = voiceId;
+    debugPrint('🔊 TTS configured: provider=$provider, voiceId=$voiceId');
+  }
 
   // Public stream getters
   Stream<VoiceConnectionState> get connectionStateStream =>
@@ -142,7 +156,12 @@ class VoiceService {
   bool get isRecording => _isRecording;
 
   /// Connect to voice WebSocket for a specific session
-  Future<void> connect(String sessionId) async {
+  /// Optionally pass TTS settings to override defaults
+  Future<void> connect(
+    String sessionId, {
+    String? ttsProvider,
+    String? ttsVoiceId,
+  }) async {
     if (_connectionState == VoiceConnectionState.connected &&
         _currentSessionId == sessionId) {
       debugPrint('🎙️ Already connected to voice session: $sessionId');
@@ -151,6 +170,11 @@ class VoiceService {
 
     await disconnect();
     _currentSessionId = sessionId;
+
+    // Apply TTS settings AFTER disconnect (which clears them)
+    if (ttsProvider != null || ttsVoiceId != null) {
+      configureTts(provider: ttsProvider, voiceId: ttsVoiceId);
+    }
 
     await _establishConnection();
   }
@@ -288,14 +312,18 @@ class VoiceService {
       debugPrint('🌍 Detected user timezone: $userTimezone');
     }
 
-    final payload = StartSessionPayload.webDefault(userTimezone: userTimezone);
+    final payload = StartSessionPayload.webDefault(
+      userTimezone: userTimezone,
+      ttsProvider: _ttsProvider,
+      ttsVoiceId: _ttsVoiceId,
+    );
     final message = {
       'type': 'start_session',
       'payload': payload.toJson(),
     };
 
     _sendJsonMessage(message);
-    debugPrint('🎙️ Sent start_session message');
+    debugPrint('🎙️ Sent start_session message (tts_provider=$_ttsProvider, tts_voice_id=$_ttsVoiceId)');
   }
 
   /// Send end_session message to server
@@ -744,6 +772,9 @@ class VoiceService {
     // Clear token
     _currentToken = null;
     _tokenExpiry = null;
+
+    // Note: TTS settings are NOT cleared on disconnect
+    // They persist until explicitly changed via configureTts()
 
     // Close WebSocket
     await _messageSubscription?.cancel();
