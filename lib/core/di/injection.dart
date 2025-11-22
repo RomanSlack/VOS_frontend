@@ -78,6 +78,11 @@ Future<void> configureDependencies() async {
         // Add API key
         options.headers['X-API-Key'] = AppConfig.apiKey;
 
+        // For Android emulator, override Host header to localhost
+        if (AppConfig.apiBaseUrl.contains('10.0.2.2')) {
+          options.headers['Host'] = 'localhost:8000';
+        }
+
         // Add JWT token if available
         final token = await getIt<AuthService>().getToken();
         if (token != null && token.isNotEmpty) {
