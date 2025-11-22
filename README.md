@@ -155,3 +155,31 @@ docker compose -f docker-compose.backend-only.yml up -d --build
 
 Username: admin / Password: admin123
 Username: user1 / Password: password1
+
+
+
+Mobile Emulator Android:
+flutter run -d emulator-5554
+
+  Alternative Commands
+
+  Run in release mode (faster performance):
+  flutter run -d emulator-5554 --release
+
+  Run with verbose logging:
+  flutter run -d emulator-5554 -v
+
+  Just build the APK without running:
+  flutter build apk --debug
+
+  Install and run a pre-built APK:
+  flutter install -d emulator-5554
+
+  While the app is running, you can:
+
+  - Press r - Hot reload (fast UI updates)
+  - Press R - Hot restart (full app restart)
+  - Press q - Quit and stop the app
+  - Press h - Help menu
+
+  Just run flutter run -d emulator-5554 in your terminal whenever you're ready!

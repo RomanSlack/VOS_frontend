@@ -6,8 +6,6 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_linkify/flutter_linkify.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
-import 'package:flutter_highlight/flutter_highlight.dart';
-import 'package:flutter_highlight/themes/monokai-sublime.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:vos_app/core/chat_manager.dart';
 import 'package:vos_app/core/services/chat_service.dart';
