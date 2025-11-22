@@ -7,6 +7,7 @@ import 'package:vos_app/core/models/chat_models.dart';
 import 'package:vos_app/core/chat_manager.dart';
 import 'package:vos_app/core/services/websocket_service.dart';
 import 'package:vos_app/core/services/auth_service.dart';
+import 'package:vos_app/core/services/session_service.dart';
 import 'package:vos_app/core/config/app_config.dart';
 import 'dart:js' as js;
 
@@ -14,9 +15,9 @@ class ChatService {
   late final ChatApi _chatApi;
   late final Dio _dio;
   late final WebSocketService _webSocketService;
+  final SessionService _sessionService = SessionService();
 
   static const String _agentId = 'primary_agent';
-  static const String _defaultSessionId = 'user_session_default';
 
   // Keep polling as fallback
   static const int _maxPollingAttempts = 30;
@@ -59,7 +60,8 @@ class ChatService {
   Future<void> initializeWebSocket({String? sessionId, ChatManager? chatManager}) async {
     if (!_useWebSocket) return;
 
-    final session = sessionId ?? _defaultSessionId;
+    // Get session from SessionService if not provided
+    final session = sessionId ?? await _sessionService.getSessionId();
 
     try {
       // Get JWT token from auth service
@@ -224,7 +226,7 @@ class ChatService {
   /// Load conversation history from the backend
   Future<List<ChatMessage>> loadConversationHistory({String? sessionId}) async {
     try {
-      final session = sessionId ?? _defaultSessionId;
+      final session = sessionId ?? await _sessionService.getSessionId();
 
       // Get conversation from the conversations API (not transcript API)
       final conversation = await _chatApi.getConversationHistory(session, limit: 500);
@@ -293,9 +295,13 @@ class ChatService {
       final userTimezone = _getUserTimezone();
       debugPrint('User timezone: $userTimezone');
 
+      // Get session ID
+      final sessionId = await _sessionService.getSessionId();
+
       // Send message to VOS (this already stores in conversation_messages)
       final request = VosMessageRequestDto(
         text: lastUserMessage,
+        sessionId: sessionId,
         userTimezone: userTimezone,
       );
       final sendResponse = await _chatApi.sendMessage(request);
@@ -377,7 +383,7 @@ class ChatService {
   /// Returns true on success, throws exception on error
   Future<bool> deleteConversationAndTranscript({String? sessionId}) async {
     try {
-      final session = sessionId ?? _defaultSessionId;
+      final session = sessionId ?? await _sessionService.getSessionId();
 
       debugPrint('🗑️ Deleting conversation and all agent transcripts...');
 

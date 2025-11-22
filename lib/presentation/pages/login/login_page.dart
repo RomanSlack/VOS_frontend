@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vos_app/core/services/auth_service.dart';
+import 'package:vos_app/core/services/session_service.dart';
+import 'package:vos_app/core/models/chat_models.dart';
 import 'package:vos_app/core/router/app_routes.dart';
 
 class LoginPage extends StatefulWidget {
@@ -14,17 +16,61 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _sessionController = TextEditingController();
   final _authService = AuthService();
+  final _sessionService = SessionService();
 
   bool _isLoading = false;
+  bool _isLoadingSessions = false;
   String? _errorMessage;
   bool _obscurePassword = true;
   bool _rememberMe = true;
+  List<SessionInfoDto> _existingSessions = [];
+  String? _selectedExistingSession;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeSession();
+  }
+
+  Future<void> _initializeSession() async {
+    // Generate a default session name
+    final defaultName = _sessionService.generateSessionName();
+    _sessionController.text = defaultName;
+
+    // Load existing sessions
+    await _loadExistingSessions();
+  }
+
+  Future<void> _loadExistingSessions() async {
+    setState(() {
+      _isLoadingSessions = true;
+    });
+
+    try {
+      final sessions = await _sessionService.listSessions();
+      if (mounted) {
+        setState(() {
+          _existingSessions = sessions;
+          _isLoadingSessions = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load sessions: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingSessions = false;
+        });
+      }
+    }
+  }
 
   @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
+    _sessionController.dispose();
     super.dispose();
   }
 
@@ -42,6 +88,10 @@ class _LoginPageState extends State<LoginPage> {
         _passwordController.text,
         rememberMe: _rememberMe,
       );
+
+      // Save the selected session
+      final sessionId = _selectedExistingSession ?? _sessionController.text.trim();
+      await _sessionService.setSessionId(sessionId);
 
       if (mounted) {
         context.go(AppRoutes.home);
@@ -240,6 +290,154 @@ class _LoginPageState extends State<LoginPage> {
                     },
                     onFieldSubmitted: (_) => _handleLogin(),
                   ),
+                  const SizedBox(height: 16),
+
+                  // Session name field
+                  TextFormField(
+                    controller: _sessionController,
+                    enabled: !_isLoading && _selectedExistingSession == null,
+                    decoration: InputDecoration(
+                      labelText: 'Session Name',
+                      hintText: 'Enter a name for this session',
+                      prefixIcon: const Icon(Icons.devices_outlined),
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.refresh),
+                        onPressed: _isLoading
+                            ? null
+                            : () {
+                                setState(() {
+                                  _sessionController.text =
+                                      _sessionService.generateSessionName();
+                                  _selectedExistingSession = null;
+                                });
+                              },
+                        tooltip: 'Generate new name',
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xFF303030),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: Colors.white.withOpacity(0.05),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: Color(0xFF00BCD4),
+                          width: 2,
+                        ),
+                      ),
+                      labelStyle: const TextStyle(color: Color(0xFF757575)),
+                      hintStyle: const TextStyle(color: Color(0xFF616161)),
+                      prefixIconColor: const Color(0xFF757575),
+                      suffixIconColor: const Color(0xFF757575),
+                    ),
+                    style: const TextStyle(color: Color(0xFFEDEDED)),
+                    validator: (value) {
+                      if (_selectedExistingSession == null &&
+                          (value == null || value.trim().isEmpty)) {
+                        return 'Please enter a session name';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Existing sessions dropdown
+                  if (_existingSessions.isNotEmpty || _isLoadingSessions)
+                    Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF303030),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.05),
+                        ),
+                      ),
+                      child: _isLoadingSessions
+                          ? const Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Center(
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFF757575),
+                                  ),
+                                ),
+                              ),
+                            )
+                          : DropdownButtonFormField<String>(
+                              value: _selectedExistingSession,
+                              decoration: const InputDecoration(
+                                labelText: 'Or select existing session',
+                                prefixIcon: Icon(Icons.history),
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                labelStyle: TextStyle(color: Color(0xFF757575)),
+                                prefixIconColor: Color(0xFF757575),
+                              ),
+                              dropdownColor: const Color(0xFF424242),
+                              style: const TextStyle(color: Color(0xFFEDEDED)),
+                              icon: const Icon(
+                                Icons.arrow_drop_down,
+                                color: Color(0xFF757575),
+                              ),
+                              items: [
+                                const DropdownMenuItem<String>(
+                                  value: null,
+                                  child: Text(
+                                    'Create new session',
+                                    style: TextStyle(
+                                      color: Color(0xFF757575),
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ),
+                                ..._existingSessions.map((session) {
+                                  return DropdownMenuItem<String>(
+                                    value: session.sessionId,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          session.sessionId,
+                                          style: const TextStyle(
+                                            color: Color(0xFFEDEDED),
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        Text(
+                                          '${session.messageCount} messages',
+                                          style: const TextStyle(
+                                            color: Color(0xFF757575),
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }),
+                              ],
+                              onChanged: _isLoading
+                                  ? null
+                                  : (value) {
+                                      setState(() {
+                                        _selectedExistingSession = value;
+                                      });
+                                    },
+                            ),
+                    ),
                   const SizedBox(height: 16),
 
                   // Remember Me checkbox

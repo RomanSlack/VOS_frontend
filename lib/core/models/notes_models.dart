@@ -211,12 +211,12 @@ class UpdateNoteRequest {
 class DeleteNoteRequest {
   @JsonKey(name: 'note_id')
   final int noteId;
-  @JsonKey(name: 'created_by')
-  final String createdBy;
+  @JsonKey(name: 'created_by', includeIfNull: false)
+  final String? createdBy;
 
   DeleteNoteRequest({
     required this.noteId,
-    required this.createdBy,
+    this.createdBy,
   });
 
   factory DeleteNoteRequest.fromJson(Map<String, dynamic> json) =>

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:vos_app/core/di/injection.dart';
 import 'package:vos_app/core/models/notes_models.dart';
 import 'package:vos_app/core/models/chat_models.dart';
 import 'package:vos_app/core/services/chat_service.dart';
@@ -27,18 +28,19 @@ class _NotesPageState extends State<NotesPage> {
   String? _selectedFolder;
   Note? _selectedNote; // Track selected note for fullscreen view
   StreamSubscription<AppInteractionPayload>? _appInteractionSubscription;
+  late final ChatService _chatService;
 
   @override
   void initState() {
     super.initState();
+    // Get ChatService from widget or dependency injection
+    _chatService = widget.chatService ?? getIt<ChatService>();
     _loadNotes();
     _subscribeToWebSocketUpdates();
   }
 
   void _subscribeToWebSocketUpdates() {
-    if (widget.chatService == null) return;
-
-    _appInteractionSubscription = widget.chatService!.appInteractionStream.listen(
+    _appInteractionSubscription = _chatService.appInteractionStream.listen(
       (payload) {
         if (!mounted) return;
         if (payload.appName == 'notes') {
@@ -555,7 +557,6 @@ class _NotesPageState extends State<NotesPage> {
               this.context.read<NotesBloc>().add(DeleteNote(
                     DeleteNoteRequest(
                       noteId: note.id,
-                      createdBy: this.context.read<NotesBloc>().userId,
                     ),
                   ));
             },

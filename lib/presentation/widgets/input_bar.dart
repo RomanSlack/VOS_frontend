@@ -6,6 +6,7 @@ import 'package:vos_app/core/modal_manager.dart';
 import 'package:vos_app/core/chat_manager.dart';
 import 'package:vos_app/core/managers/voice_manager.dart';
 import 'package:vos_app/core/services/voice_batch_service.dart';
+import 'package:vos_app/core/services/session_service.dart';
 import 'package:vos_app/core/di/injection.dart';
 import 'package:vos_app/utils/chat_toast.dart';
 
@@ -58,11 +59,17 @@ class _InputBarState extends State<InputBar> with SingleTickerProviderStateMixin
       ),
     );
 
-    // Connect to voice service using the same session ID as chat
-    _voiceManager.connect(VosModalManager.defaultSessionId);
+    // Connect to voice service using session ID from SessionService
+    _initializeVoiceConnection();
 
     // Listen for final transcriptions and audio
     _voiceManager.addListener(_onVoiceStateChanged);
+  }
+
+  Future<void> _initializeVoiceConnection() async {
+    final sessionService = SessionService();
+    final sessionId = await sessionService.getSessionId();
+    _voiceManager.connect(sessionId);
   }
 
   void _onVoiceStateChanged() {
@@ -99,6 +106,8 @@ class _InputBarState extends State<InputBar> with SingleTickerProviderStateMixin
         audioFilePath,
         audioDurationMs: _voiceManager.lastAudioDurationMs,
       );
+      // Clear the audio after consuming to prevent re-attachment on subsequent state changes
+      _voiceManager.clearLastAudio();
     }
 
     // Handle batch transcription result

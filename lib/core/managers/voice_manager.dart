@@ -308,6 +308,13 @@ class VoiceManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Clear last audio (after it's been consumed/attached to a message)
+  void clearLastAudio() {
+    _lastAudioFilePath = null;
+    _lastAudioDurationMs = null;
+    // Don't notify listeners - this is just cleanup after consumption
+  }
+
   /// Clear error
   void clearError() {
     _lastError = null;

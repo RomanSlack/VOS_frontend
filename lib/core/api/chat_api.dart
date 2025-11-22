@@ -40,4 +40,11 @@ abstract class ChatApi {
 
   @GET('/api/v1/agents')
   Future<dynamic> getAllAgents();
+
+  // Session list endpoint
+  @GET('/api/v1/conversations')
+  Future<SessionListResponseDto> listSessions({
+    @Query('limit') int? limit,
+    @Query('offset') int? offset,
+  });
 }

@@ -174,6 +174,11 @@ class _ChatAppState extends State<ChatApp> {
       }
     }
 
+    // Trigger rebuild to ensure UI updates (e.g., message status changes)
+    if (mounted) {
+      setState(() {});
+    }
+
     // Check if there's a new user message that needs AI response
     _checkForNewUserMessage();
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vos_app/core/services/auth_service.dart';
+import 'package:vos_app/core/services/session_service.dart';
 import 'package:vos_app/core/router/app_routes.dart';
 
 class ProfileDialog extends StatefulWidget {
@@ -12,7 +13,7 @@ class ProfileDialog extends StatefulWidget {
 
 class _ProfileDialogState extends State<ProfileDialog> {
   String? _username;
-  final String _sessionId = 'user_session_default'; // Default session ID
+  String _sessionId = 'Loading...';
   bool _isLoading = true;
 
   @override
@@ -23,11 +24,15 @@ class _ProfileDialogState extends State<ProfileDialog> {
 
   Future<void> _loadUserInfo() async {
     final authService = AuthService();
+    final sessionService = SessionService();
+
     final username = await authService.getUsername();
+    final sessionId = await sessionService.getSessionId();
 
     if (mounted) {
       setState(() {
         _username = username ?? 'Guest';
+        _sessionId = sessionId;
         _isLoading = false;
       });
     }

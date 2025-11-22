@@ -183,11 +183,14 @@ class AppInteractionPayload {
 @JsonSerializable()
 class VosMessageRequestDto {
   final String text;
+  @JsonKey(name: 'session_id')
+  final String? sessionId;
   @JsonKey(name: 'user_timezone')
   final String? userTimezone;
 
   const VosMessageRequestDto({
     required this.text,
+    this.sessionId,
     this.userTimezone,
   });
 
@@ -340,4 +343,62 @@ class ConversationHistoryResponseDto {
       _$ConversationHistoryResponseDtoFromJson(json);
 
   Map<String, dynamic> toJson() => _$ConversationHistoryResponseDtoToJson(this);
+}
+
+// Session List Models (for listing all available sessions)
+
+@JsonSerializable()
+class SessionInfoDto {
+  @JsonKey(name: 'session_id')
+  final String sessionId;
+  @JsonKey(name: 'message_count')
+  final int messageCount;
+  @JsonKey(name: 'last_message_time')
+  final String? lastMessageTime;
+  @JsonKey(name: 'first_message_time')
+  final String? firstMessageTime;
+  @JsonKey(name: 'last_message_preview')
+  final String? lastMessagePreview;
+  @JsonKey(name: 'last_message_sender_type')
+  final String? lastMessageSenderType;
+  @JsonKey(name: 'last_message_sender_id')
+  final String? lastMessageSenderId;
+
+  const SessionInfoDto({
+    required this.sessionId,
+    required this.messageCount,
+    this.lastMessageTime,
+    this.firstMessageTime,
+    this.lastMessagePreview,
+    this.lastMessageSenderType,
+    this.lastMessageSenderId,
+  });
+
+  factory SessionInfoDto.fromJson(Map<String, dynamic> json) =>
+      _$SessionInfoDtoFromJson(json);
+
+  Map<String, dynamic> toJson() => _$SessionInfoDtoToJson(this);
+}
+
+@JsonSerializable()
+class SessionListResponseDto {
+  final List<SessionInfoDto> sessions;
+  @JsonKey(name: 'total_sessions')
+  final int totalSessions;
+  final int limit;
+  final int offset;
+  final String timestamp;
+
+  const SessionListResponseDto({
+    required this.sessions,
+    required this.totalSessions,
+    required this.limit,
+    required this.offset,
+    required this.timestamp,
+  });
+
+  factory SessionListResponseDto.fromJson(Map<String, dynamic> json) =>
+      _$SessionListResponseDtoFromJson(json);
+
+  Map<String, dynamic> toJson() => _$SessionListResponseDtoToJson(this);
 }
