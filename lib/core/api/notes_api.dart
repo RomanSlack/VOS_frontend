@@ -45,15 +45,17 @@ class NotesToolHelper {
     List<String>? tags,
     bool? isPinned,
     bool? isArchived,
-    required String createdBy,
+    String? createdBy,
     int? limit,
     int? offset,
     String? sortBy,
     String? sortOrder,
   }) {
-    final params = <String, dynamic>{
-      'created_by': createdBy,
-    };
+    final params = <String, dynamic>{};
+
+    if (createdBy != null && createdBy.isNotEmpty) {
+      params['created_by'] = createdBy;
+    }
 
     if (folder != null) {
       params['folder'] = folder;

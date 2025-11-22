@@ -40,7 +40,7 @@ class NotesBloc extends Bloc<NotesBlocEvent, NotesState> {
         tags: event.tags,
         isPinned: event.isPinned,
         isArchived: event.isArchived ?? false,
-        createdBy: userId,
+        // createdBy omitted to get all notes
         limit: event.limit ?? 50,
         offset: event.offset ?? 0,
         sortBy: event.sortBy ?? 'updated_at',
@@ -108,7 +108,7 @@ class NotesBloc extends Bloc<NotesBlocEvent, NotesState> {
 
       final response = await notesApi.getNote(
         noteId: event.noteId,
-        createdBy: userId,
+        // createdBy omitted to get any note
       );
 
       if (response.status == 'success' && response.result != null) {
@@ -136,7 +136,7 @@ class NotesBloc extends Bloc<NotesBlocEvent, NotesState> {
         // Immediately reload notes to show the new note
         final listResponse = await notesApi.listNotes(
           isArchived: false,
-          createdBy: userId,
+          // createdBy omitted to get all notes
           limit: 50,
           offset: 0,
           sortBy: 'updated_at',
