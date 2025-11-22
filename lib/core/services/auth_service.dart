@@ -58,9 +58,16 @@ class AuthService {
       }
     } on DioException catch (e) {
       debugPrint('Login error: ${e.message}');
+      debugPrint('Status code: ${e.response?.statusCode}');
+      debugPrint('Response data: ${e.response?.data}');
+      debugPrint('Request data: ${e.requestOptions.data}');
+      debugPrint('Request headers: ${e.requestOptions.headers}');
 
       if (e.response?.statusCode == 401) {
         throw Exception('Invalid username or password');
+      } else if (e.response?.statusCode == 400) {
+        final errorMsg = e.response?.data.toString() ?? 'Bad request';
+        throw Exception('Login failed: $errorMsg');
       } else if (e.type == DioExceptionType.connectionTimeout ||
                  e.type == DioExceptionType.connectionError) {
         throw Exception('Cannot connect to server at ${AppConfig.apiBaseUrl}');

@@ -64,10 +64,33 @@ Future<void> configureDependencies() async {
     ),
   );
 
-  // Register Memory API
-  final dio = Dio();
+  // Register Memory API with authentication
+  final memoryDio = Dio(BaseOptions(
+    baseUrl: AppConfig.apiBaseUrl,
+    connectTimeout: const Duration(seconds: 30),
+    receiveTimeout: const Duration(seconds: 30),
+  ));
+
+  // Add authentication interceptor
+  memoryDio.interceptors.add(
+    InterceptorsWrapper(
+      onRequest: (options, handler) async {
+        // Add API key
+        options.headers['X-API-Key'] = AppConfig.apiKey;
+
+        // Add JWT token if available
+        final token = await getIt<AuthService>().getToken();
+        if (token != null && token.isNotEmpty) {
+          options.headers['Authorization'] = 'Bearer $token';
+        }
+
+        return handler.next(options);
+      },
+    ),
+  );
+
   getIt.registerLazySingleton<MemoryApi>(
-    () => MemoryApi(dio, baseUrl: AppConfig.apiBaseUrl),
+    () => MemoryApi(memoryDio),
   );
 
   // Register Memory Visualization BLoC
