@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vos_app/core/models/notes_models.dart';
+import 'package:vos_app/core/models/chat_models.dart';
+import 'package:vos_app/core/services/chat_service.dart';
 import 'package:vos_app/features/notes/bloc/notes_bloc.dart';
 import 'package:vos_app/features/notes/bloc/notes_event.dart';
 import 'package:vos_app/features/notes/bloc/notes_state.dart';
@@ -10,7 +12,9 @@ import 'package:vos_app/features/notes/widgets/create_note_dialog.dart';
 import 'package:vos_app/features/notes/widgets/note_fullscreen_view.dart';
 
 class NotesPage extends StatefulWidget {
-  const NotesPage({Key? key}) : super(key: key);
+  final ChatService? chatService;
+
+  const NotesPage({Key? key, this.chatService}) : super(key: key);
 
   @override
   State<NotesPage> createState() => _NotesPageState();
@@ -22,18 +26,81 @@ class _NotesPageState extends State<NotesPage> {
   bool _showPinnedOnly = false;
   String? _selectedFolder;
   Note? _selectedNote; // Track selected note for fullscreen view
-  Timer? _autoSyncTimer;
+  StreamSubscription<AppInteractionPayload>? _appInteractionSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadNotes();
-    // Auto-sync every second
-    _autoSyncTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (_selectedNote == null && _searchController.text.isEmpty) {
-        _loadNotes();
-      }
-    });
+    _subscribeToWebSocketUpdates();
+  }
+
+  void _subscribeToWebSocketUpdates() {
+    if (widget.chatService == null) return;
+
+    _appInteractionSubscription = widget.chatService!.appInteractionStream.listen(
+      (payload) {
+        if (!mounted) return;
+        if (payload.appName == 'notes') {
+          debugPrint('📝 Notes app_interaction received: ${payload.action}');
+
+          switch (payload.action) {
+            case 'note_created':
+              try {
+                final note = Note.fromJson(payload.result);
+                context.read<NotesBloc>().add(NoteAdded(note));
+                debugPrint('📝 Note added via WebSocket: ${note.title}');
+              } catch (e) {
+                debugPrint('Error parsing created note: $e');
+              }
+              break;
+            case 'note_updated':
+              try {
+                final note = Note.fromJson(payload.result);
+                context.read<NotesBloc>().add(NoteUpdated(note));
+                // Update selected note if it's the one being viewed
+                if (_selectedNote != null && _selectedNote!.id == note.id) {
+                  setState(() {
+                    _selectedNote = note;
+                  });
+                }
+                debugPrint('📝 Note updated via WebSocket: ${note.title}');
+              } catch (e) {
+                debugPrint('Error parsing updated note: $e');
+              }
+              break;
+            case 'note_deleted':
+              try {
+                final noteId = payload.result['id'] as int;
+                context.read<NotesBloc>().add(NoteDeleted(noteId));
+                // Close fullscreen view if the deleted note was being viewed
+                if (_selectedNote != null && _selectedNote!.id == noteId) {
+                  setState(() {
+                    _selectedNote = null;
+                  });
+                }
+                debugPrint('📝 Note deleted via WebSocket: $noteId');
+              } catch (e) {
+                debugPrint('Error parsing deleted note: $e');
+              }
+              break;
+            case 'note_archived':
+              try {
+                final noteId = payload.result['id'] as int;
+                final isArchived = payload.result['is_archived'] as bool? ?? true;
+                context.read<NotesBloc>().add(NoteArchived(noteId, isArchived));
+                debugPrint('📝 Note archived via WebSocket: $noteId');
+              } catch (e) {
+                debugPrint('Error parsing archived note: $e');
+              }
+              break;
+          }
+        }
+      },
+      onError: (error) {
+        debugPrint('Error in notes app interaction stream: $error');
+      },
+    );
   }
 
   void _loadNotes() {
@@ -502,7 +569,7 @@ class _NotesPageState extends State<NotesPage> {
 
   @override
   void dispose() {
-    _autoSyncTimer?.cancel();
+    _appInteractionSubscription?.cancel();
     _searchController.dispose();
     super.dispose();
   }

@@ -5,6 +5,7 @@ import 'package:vos_app/presentation/pages/home/mobile_home_page.dart';
 import 'package:vos_app/core/modal_manager.dart';
 import 'package:vos_app/core/sticky_notes_manager.dart';
 import 'package:vos_app/core/services/calendar_service.dart';
+import 'package:vos_app/core/services/chat_service.dart';
 import 'package:vos_app/core/di/injection.dart';
 import 'package:vos_app/core/utils/logger.dart';
 
@@ -28,6 +29,9 @@ class _HomePageState extends State<HomePage> {
         _modalManager = VosModalManager();
       });
       _initializeNotifications();
+      // Subscribe sticky notes manager to WebSocket for real-time updates
+      final chatService = getIt<ChatService>();
+      _stickyNotesManager.subscribeToWebSocket(chatService);
     });
   }
 
@@ -46,6 +50,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     _modalManager?.dispose();
+    _stickyNotesManager.dispose();
     super.dispose();
   }
 

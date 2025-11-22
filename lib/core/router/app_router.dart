@@ -8,6 +8,7 @@ import 'package:vos_app/presentation/pages/splash/splash_page.dart';
 import 'package:vos_app/presentation/pages/login/login_page.dart';
 import 'package:vos_app/features/voice/pages/voice_test_page.dart';
 import 'package:vos_app/features/notes/pages/notes_page.dart';
+import 'package:vos_app/features/settings/pages/settings_page.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vos_app/core/di/injection.dart';
 import 'package:vos_app/features/notes/bloc/notes_bloc.dart';
@@ -71,6 +72,11 @@ class AppRouter {
             create: (context) => getIt<NotesBloc>()..add(const LoadNotes()),
             child: const NotesPage(),
           ),
+        ),
+        GoRoute(
+          path: AppRoutes.settings,
+          name: AppRoutes.settings,
+          builder: (context, state) => const SettingsPage(),
         ),
       ],
       errorBuilder: (context, state) => _ErrorPage(error: state.error),

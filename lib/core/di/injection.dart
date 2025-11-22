@@ -10,6 +10,8 @@ import 'package:vos_app/core/services/notes_service.dart';
 import 'package:vos_app/core/managers/voice_manager.dart';
 import 'package:vos_app/features/calendar/bloc/calendar_bloc.dart';
 import 'package:vos_app/features/notes/bloc/notes_bloc.dart';
+import 'package:vos_app/features/settings/bloc/settings_bloc.dart';
+import 'package:vos_app/features/settings/services/settings_service.dart';
 import 'package:vos_app/core/services/auth_service.dart';
 
 final getIt = GetIt.instance;
@@ -28,12 +30,14 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton<CalendarService>(() => CalendarService());
   getIt.registerLazySingleton<NotesService>(() => NotesService());
   getIt.registerLazySingleton<AuthService>(() => AuthService());
+  getIt.registerLazySingleton<SettingsService>(() => SettingsService());
 
-  // Register voice manager (depends on VoiceService and VoiceBatchService)
+  // Register voice manager (depends on VoiceService, VoiceBatchService, and SettingsService)
   getIt.registerLazySingleton<VoiceManager>(
     () => VoiceManager(
       getIt<VoiceService>(),
       getIt<VoiceBatchService>(),
+      getIt<SettingsService>(),
     ),
   );
 
@@ -45,6 +49,14 @@ Future<void> configureDependencies() async {
     () => NotesBloc(
       getIt<NotesService>().toolHelper,
       'user_session_default', // TODO: Get actual user ID from auth context
+    ),
+  );
+  getIt.registerFactory<SettingsBloc>(
+    () => SettingsBloc(
+      settingsService: getIt<SettingsService>(),
+      voiceManager: getIt<VoiceManager>(),
+      voiceService: getIt<VoiceService>(),
+      authService: getIt<AuthService>(),
     ),
   );
 

@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:vos_app/core/models/voice_models.dart';
 import 'package:vos_app/core/services/voice_service.dart';
 import 'package:vos_app/core/services/voice_batch_service.dart';
+import 'package:vos_app/features/settings/services/settings_service.dart';
 
 /// Voice UI state manager
 /// Extends ChangeNotifier to notify UI of state changes
 class VoiceManager extends ChangeNotifier {
   final VoiceService _voiceService;
   final VoiceBatchService _batchService;
+  final SettingsService _settingsService;
 
   // State
   VoiceState _voiceState = VoiceState.idle;
@@ -125,7 +127,7 @@ class VoiceManager extends ChangeNotifier {
     }
   }
 
-  VoiceManager(this._voiceService, this._batchService) {
+  VoiceManager(this._voiceService, this._batchService, this._settingsService) {
     _setupListeners();
     _setupBatchListeners();
   }
@@ -244,6 +246,19 @@ class VoiceManager extends ChangeNotifier {
   /// Connect to voice session
   Future<void> connect(String sessionId) async {
     _sessionId = sessionId;
+
+    // Load saved TTS settings
+    try {
+      final settings = await _settingsService.loadSettings();
+      _voiceService.configureTts(
+        provider: settings.ttsProvider,
+        voiceId: settings.effectiveVoiceId,
+      );
+      debugPrint('Loaded TTS settings: provider=${settings.ttsProvider}, voiceId=${settings.effectiveVoiceId}');
+    } catch (e) {
+      debugPrint('Failed to load TTS settings: $e');
+    }
+
     await _voiceService.connect(sessionId);
   }
 

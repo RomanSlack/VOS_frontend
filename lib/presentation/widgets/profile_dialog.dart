@@ -146,6 +146,40 @@ class _ProfileDialogState extends State<ProfileDialog> {
                   ),
                   const SizedBox(height: 20),
 
+                  // Settings button
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop(); // Close dialog
+                        context.push(AppRoutes.settings);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF00BCD4),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        side: const BorderSide(color: Color(0xFF00BCD4)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.settings_outlined, size: 18),
+                          SizedBox(width: 8),
+                          Text(
+                            'Settings',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
                   // Logout button
                   SizedBox(
                     width: double.infinity,

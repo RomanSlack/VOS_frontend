@@ -610,7 +610,7 @@ class VosModalManager extends ChangeNotifier {
   Widget _buildNotesContent() {
     return BlocProvider(
       create: (context) => getIt<NotesBloc>()..add(const LoadNotes()),
-      child: const NotesPage(),
+      child: NotesPage(chatService: _chatService),
     );
   }
 

@@ -55,7 +55,7 @@ class _VoiceLockOverlayState extends State<VoiceLockOverlay>
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.black54,
+      color: Colors.transparent,
       child: InkWell(
         onTap: widget.onTap,
         child: Center(

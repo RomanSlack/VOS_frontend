@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:go_router/go_router.dart';
 import 'package:vos_app/presentation/widgets/circle_icon.dart';
 import 'package:vos_app/presentation/widgets/app_icon.dart';
 import 'package:vos_app/presentation/widgets/profile_dialog.dart';
 import 'package:vos_app/core/modal_manager.dart';
+import 'package:vos_app/core/router/app_routes.dart';
 
 class AppRail extends StatelessWidget {
   final VosModalManager modalManager;
@@ -112,8 +114,23 @@ class AppRail extends StatelessWidget {
             onPressed: () {},
           ),
 
-          // Spacer to push user icon to bottom
+          // Spacer to push bottom icons down
           const Spacer(),
+
+          // Settings icon
+          Builder(
+            builder: (context) => CircleIcon(
+              icon: Icons.settings_outlined,
+              size: iconSize,
+              useFontAwesome: false,
+              backgroundColor: const Color(0xFF303030),
+              borderColor: const Color(0xFF212121),
+              onPressed: () {
+                context.push(AppRoutes.settings);
+              },
+            ),
+          ),
+          const SizedBox(height: iconSpacing),
 
           // User icon at bottom with special styling
           Builder(

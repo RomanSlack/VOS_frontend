@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:vos_app/presentation/widgets/circle_icon.dart';
-import 'package:vos_app/presentation/widgets/voice_lock_overlay.dart';
 import 'package:vos_app/core/modal_manager.dart';
 import 'package:vos_app/core/chat_manager.dart';
 import 'package:vos_app/core/managers/voice_manager.dart';
@@ -122,6 +121,13 @@ class _InputBarState extends State<InputBar> with SingleTickerProviderStateMixin
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    return '$minutes:$seconds';
   }
 
   void _handleSubmit(String text) async {
@@ -328,29 +334,46 @@ class _InputBarState extends State<InputBar> with SingleTickerProviderStateMixin
         child: Row(
           children: [
             Expanded(
-              child: TextField(
-                controller: _controller,
-                focusNode: _focusNode,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
-                decoration: const InputDecoration(
-                  hintText: 'Ask anything',
-                  hintStyle: TextStyle(
-                    color: Color(0xFF757575),
-                    fontSize: 16,
-                  ),
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  filled: false, // Ensure no fill color
-                  fillColor: Colors.transparent, // Explicitly transparent
-                  contentPadding: EdgeInsets.only(left: 8), // Small left padding
-                ),
-                cursorColor: Colors.white,
-                onSubmitted: _handleSubmit,
-                textInputAction: TextInputAction.send,
+              child: ListenableBuilder(
+                listenable: _voiceManager,
+                builder: (context, child) {
+                  final isLocked = _voiceManager.isBatchRecordingLocked;
+                  final duration = _voiceManager.batchRecordingDuration;
+
+                  // Show duration when locked, otherwise show default hint
+                  String hintText = 'Ask anything';
+                  Color hintColor = const Color(0xFF757575);
+
+                  if (isLocked && duration != null) {
+                    hintText = '● Recording ${_formatDuration(duration)}  •  Tap mic to send';
+                    hintColor = Colors.red.shade400;
+                  }
+
+                  return TextField(
+                    controller: _controller,
+                    focusNode: _focusNode,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: hintText,
+                      hintStyle: TextStyle(
+                        color: hintColor,
+                        fontSize: 16,
+                      ),
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      filled: false,
+                      fillColor: Colors.transparent,
+                      contentPadding: const EdgeInsets.only(left: 8),
+                    ),
+                    cursorColor: Colors.white,
+                    onSubmitted: _handleSubmit,
+                    textInputAction: TextInputAction.send,
+                  );
+                },
               ),
             ),
             const SizedBox(width: 12),
@@ -427,25 +450,6 @@ class _InputBarState extends State<InputBar> with SingleTickerProviderStateMixin
           ],
         ),
       ),
-        ),
-        // Lock overlay when recording is locked
-        ListenableBuilder(
-          listenable: _voiceManager,
-          builder: (context, child) {
-            if (_voiceManager.isBatchRecordingLocked &&
-                _voiceManager.batchRecordingDuration != null) {
-              return Positioned.fill(
-                child: VoiceLockOverlay(
-                  recordingDuration: _voiceManager.batchRecordingDuration!,
-                  onTap: _onMicTap,
-                  onCancel: () {
-                    _voiceManager.cancelBatchRecording();
-                  },
-                ),
-              );
-            }
-            return const SizedBox.shrink();
-          },
         ),
       ],
     );

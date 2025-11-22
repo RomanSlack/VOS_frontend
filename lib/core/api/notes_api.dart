@@ -91,16 +91,19 @@ class NotesToolHelper {
 
   Future<ToolExecutionResponse> getNote({
     required int noteId,
-    required String createdBy,
+    String? createdBy,
   }) {
+    final params = <String, dynamic>{
+      'note_id': noteId,
+    };
+    if (createdBy != null) {
+      params['created_by'] = createdBy;
+    }
     return _api.executeTool(
       ToolExecutionRequest(
         agentId: 'notes_agent',
         toolName: 'get_note',
-        parameters: {
-          'note_id': noteId,
-          'created_by': createdBy,
-        },
+        parameters: params,
       ),
     );
   }
