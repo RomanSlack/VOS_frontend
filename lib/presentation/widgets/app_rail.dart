@@ -104,6 +104,13 @@ class AppRail extends StatelessWidget {
             size: iconSize,
             modalManager: modalManager,
           ),
+          const SizedBox(height: iconSpacing),
+          AppIcon(
+            appId: 'memory_viz',
+            icon: Icons.memory_outlined,
+            size: iconSize,
+            modalManager: modalManager,
+          ),
 
           // Double spacing before plus icon
           const SizedBox(height: iconSpacing * 4),

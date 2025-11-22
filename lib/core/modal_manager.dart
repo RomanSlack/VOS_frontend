@@ -13,6 +13,7 @@ import 'package:vos_app/features/calendar/bloc/calendar_bloc.dart';
 import 'package:vos_app/features/notes/bloc/notes_bloc.dart';
 import 'package:vos_app/features/notes/bloc/notes_event.dart';
 import 'package:vos_app/features/notes/pages/notes_page.dart';
+import 'package:vos_app/features/memory_visualization/widgets/memory_viz_app.dart';
 import 'package:vos_app/core/di/injection.dart';
 
 // App definitions for each modal
@@ -284,6 +285,12 @@ class VosModalManager extends ChangeNotifier {
       icon = Icons.language_outlined;
       width = 900;
       height = 650;
+    } else if (appId == 'memory_viz') {
+      child = _buildMemoryVizContent();
+      title = 'Memory Visualization';
+      icon = Icons.memory_outlined;
+      width = 1000;
+      height = 700;
     } else {
       final app = apps.firstWhere((a) => a.id == appId);
       child = app.contentBuilder();
@@ -610,6 +617,10 @@ class VosModalManager extends ChangeNotifier {
       weatherService: _weatherService,
       chatService: _chatService,
     );
+  }
+
+  Widget _buildMemoryVizContent() {
+    return const MemoryVizApp();
   }
 
 }

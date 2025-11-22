@@ -3,7 +3,8 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:vos_app/core/chat_manager.dart';
-import 'package:vos_app/presentation/widgets/web_browser_view.dart';
+import 'package:vos_app/presentation/widgets/web_browser_view.dart'
+  if (dart.library.io) 'package:vos_app/presentation/widgets/web_browser_view_stub.dart';
 
 class BrowserApp extends StatefulWidget {
   final ChatManager? chatManager;

@@ -11,7 +11,7 @@ import 'package:dio/dio.dart';
 import 'package:vos_app/core/models/voice_models.dart';
 import 'package:vos_app/core/config/app_config.dart';
 import 'package:vos_app/core/api/voice_api.dart';
-import 'dart:js' as js;
+import 'package:vos_app/utils/timezone_helper.dart';
 
 /// Connection state for voice WebSocket
 enum VoiceConnectionState {
@@ -79,19 +79,9 @@ class VoiceService {
     _voiceApi = VoiceApi(_dio, baseUrl: AppConfig.voiceApiBaseUrl);
   }
 
-  /// Detect user timezone using JavaScript Intl API
+  /// Detect user timezone
   String? _getUserTimezone() {
-    try {
-      if (kIsWeb) {
-        final timezone = js.context.callMethod('eval', [
-          'Intl.DateTimeFormat().resolvedOptions().timeZone'
-        ]);
-        return timezone as String?;
-      }
-    } catch (e) {
-      debugPrint('Failed to get user timezone: $e');
-    }
-    return null;
+    return TimezoneHelper.getUserTimezone();
   }
 
   // Stream controllers for broadcasting events

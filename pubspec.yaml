@@ -64,7 +64,7 @@ dependencies:
   image_picker: ^1.1.2
 
   # Audio (Voice Mode)
-  record: ^5.1.2
+  record: ^5.0.0
   just_audio: ^0.9.40
   path_provider: ^2.1.1
 
@@ -144,3 +144,6 @@ flutter:
 #   image_path: "assets/icons/app_icon.png"
 #   adaptive_icon_background: "#FFFFFF"
 #   adaptive_icon_foreground: "assets/icons/app_icon_adaptive.png"
+
+dependency_overrides:
+  record_linux: ^1.0.0

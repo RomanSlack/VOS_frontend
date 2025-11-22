@@ -1,5 +1,6 @@
 import 'package:get_it/get_it.dart';
 import 'package:injectable/injectable.dart';
+import 'package:dio/dio.dart';
 import 'package:vos_app/core/di/injection.config.dart';
 import 'package:vos_app/core/services/chat_service.dart';
 import 'package:vos_app/core/services/weather_service.dart';
@@ -8,11 +9,14 @@ import 'package:vos_app/core/services/voice_batch_service.dart';
 import 'package:vos_app/core/services/calendar_service.dart';
 import 'package:vos_app/core/services/notes_service.dart';
 import 'package:vos_app/core/managers/voice_manager.dart';
+import 'package:vos_app/core/api/memory_api.dart';
 import 'package:vos_app/features/calendar/bloc/calendar_bloc.dart';
 import 'package:vos_app/features/notes/bloc/notes_bloc.dart';
 import 'package:vos_app/features/settings/bloc/settings_bloc.dart';
 import 'package:vos_app/features/settings/services/settings_service.dart';
+import 'package:vos_app/features/memory_visualization/bloc/memory_viz_bloc.dart';
 import 'package:vos_app/core/services/auth_service.dart';
+import 'package:vos_app/core/config/app_config.dart';
 
 final getIt = GetIt.instance;
 
@@ -58,6 +62,17 @@ Future<void> configureDependencies() async {
       voiceService: getIt<VoiceService>(),
       authService: getIt<AuthService>(),
     ),
+  );
+
+  // Register Memory API
+  final dio = Dio();
+  getIt.registerLazySingleton<MemoryApi>(
+    () => MemoryApi(dio, baseUrl: AppConfig.apiBaseUrl),
+  );
+
+  // Register Memory Visualization BLoC
+  getIt.registerFactory<MemoryVizBloc>(
+    () => MemoryVizBloc(getIt<MemoryApi>()),
   );
 
   getIt.init();

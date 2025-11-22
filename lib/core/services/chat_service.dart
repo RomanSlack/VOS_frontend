@@ -9,7 +9,7 @@ import 'package:vos_app/core/services/websocket_service.dart';
 import 'package:vos_app/core/services/auth_service.dart';
 import 'package:vos_app/core/services/session_service.dart';
 import 'package:vos_app/core/config/app_config.dart';
-import 'dart:js' as js;
+import 'package:vos_app/utils/timezone_helper.dart';
 
 class ChatService {
   late final ChatApi _chatApi;
@@ -174,21 +174,10 @@ class ChatService {
   /// Get WebSocket app interaction stream for UI updates
   Stream<AppInteractionPayload> get appInteractionStream => _webSocketService.appInteractionStream;
 
-  /// Get user's timezone (IANA timezone name) using JavaScript interop
+  /// Get user's timezone (IANA timezone name)
   /// Returns timezone string like "America/New_York" or null if unavailable
   String? _getUserTimezone() {
-    try {
-      if (kIsWeb) {
-        // Use JavaScript Intl API to get timezone
-        final timezone = js.context.callMethod('eval', [
-          'Intl.DateTimeFormat().resolvedOptions().timeZone'
-        ]);
-        return timezone as String?;
-      }
-    } catch (e) {
-      debugPrint('Failed to get user timezone: $e');
-    }
-    return null;
+    return TimezoneHelper.getUserTimezone();
   }
 
   /// Parse message content to extract actual user-facing message

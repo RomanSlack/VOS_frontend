@@ -5,7 +5,8 @@
       "Read(//c/Users/forke/Documents/VOS/services/tools/search/**)",
       "Read(//c/Users/forke/Documents/VOS/**)",
       "WebSearch",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(flutter build:*)"
     ],
     "deny": [],
     "ask": []
