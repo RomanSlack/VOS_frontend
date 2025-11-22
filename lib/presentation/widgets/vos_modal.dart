@@ -19,7 +19,6 @@ class VosModal extends StatefulWidget {
   final ValueNotifier<bool>? isActiveNotifier;
   final ValueNotifier<ModalState>? stateNotifier;
   final ValueNotifier<double>? zoomLevelNotifier;
-  final Size? screenSize; // Screen size from outside Transform.scale
 
   const VosModal({
     super.key,
@@ -37,7 +36,6 @@ class VosModal extends StatefulWidget {
     this.isActiveNotifier,
     this.stateNotifier,
     this.zoomLevelNotifier,
-    this.screenSize,
   });
 
   @override
@@ -117,7 +115,7 @@ class _VosModalState extends State<VosModal> {
         // When fullscreen, calculate position to fill screen accounting for zoom
         double left, top;
         if (currentState == ModalState.fullscreen) {
-          final screenSize = widget.screenSize ?? MediaQuery.of(context).size;
+          final screenSize = MediaQuery.of(context).size;
           final screenCenterX = screenSize.width / 2;
           final screenCenterY = screenSize.height / 2;
 
@@ -147,7 +145,7 @@ class _VosModalState extends State<VosModal> {
               // Calculate size accounting for zoom
               double width, height;
               if (currentState == ModalState.fullscreen) {
-                final screenSize = widget.screenSize ?? MediaQuery.of(context).size;
+                final screenSize = MediaQuery.of(context).size;
                 // Fullscreen should fill available space in workspace coordinates
                 width = (screenSize.width - 144) / zoomLevel; // Account for AppRail (112) + margins (32)
                 height = (screenSize.height - 148) / zoomLevel; // Account for InputBar (100) + margins (48)
@@ -356,15 +354,15 @@ class _VosModalState extends State<VosModal> {
     final delta = (details.globalPosition - _dragStartPosition) / zoomLevel;
     _position = _dragStartOffset + delta;
 
-    // Use provided screen size (from outside Transform.scale) or fall back to MediaQuery
-    final screenSize = widget.screenSize ?? MediaQuery.of(context).size;
-    final screenCenterX = screenSize.width / 2;
-    final screenCenterY = screenSize.height / 2;
+    // Use current window size for boundaries
+    final windowSize = MediaQuery.of(context).size;
+    final screenCenterX = windowSize.width / 2;
+    final screenCenterY = windowSize.height / 2;
 
     final screenLeft = 112.0; // AppRail width + margins
-    final screenRight = screenSize.width - 16.0;
+    final screenRight = windowSize.width - 16.0;
     final screenTop = 0.0;
-    final screenBottom = screenSize.height - 100.0; // Above input bar
+    final screenBottom = windowSize.height - 100.0; // Above input bar
 
     // Calculate workspace bounds accounting for center-aligned Transform.scale
     // Formula: workspacePos = (screenPos - screenCenter) / zoom + screenCenter
@@ -478,13 +476,13 @@ class _VosModalState extends State<VosModal> {
     _width = (_resizeStartWidth + delta.dx).clamp(_minWidth, double.infinity);
     _height = (_resizeStartHeight + delta.dy).clamp(_minHeight, double.infinity);
 
-    // Use provided screen size (from outside Transform.scale) or fall back to MediaQuery
-    final screenSize = widget.screenSize ?? MediaQuery.of(context).size;
-    final screenCenterX = screenSize.width / 2;
-    final screenCenterY = screenSize.height / 2;
+    // Use current window size for boundaries
+    final windowSize = MediaQuery.of(context).size;
+    final screenCenterX = windowSize.width / 2;
+    final screenCenterY = windowSize.height / 2;
 
-    final screenRight = screenSize.width - 16.0;
-    final screenBottom = screenSize.height - 100.0;
+    final screenRight = windowSize.width - 16.0;
+    final screenBottom = windowSize.height - 100.0;
 
     // Calculate max size accounting for center-aligned Transform.scale
     final workspaceRight = (screenRight - screenCenterX) / zoomLevel + screenCenterX;

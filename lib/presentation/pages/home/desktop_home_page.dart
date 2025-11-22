@@ -125,17 +125,11 @@ class _OptimizedModalStack extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Get screen size from outside Transform.scale
-    final screenSize = MediaQuery.of(context).size;
-
     return ListenableBuilder(
       listenable: modalManager,
       builder: (context, child) {
         final openModals = modalManager.openModals;
         final minimizedModals = modalManager.minimizedModals;
-
-        // Set screen size in modal manager for new modals
-        modalManager.setScreenSize(screenSize);
 
         // Combine all modals into one list to maintain consistent keys
         final allModals = [...openModals, ...minimizedModals];

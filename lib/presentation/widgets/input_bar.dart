@@ -30,11 +30,15 @@ class _InputBarState extends State<InputBar> with SingleTickerProviderStateMixin
   // Hold-to-record state (for batch recording)
   bool _isHolding = false;
   Timer? _holdDurationTimer;
+  Timer? _holdStartTimer;
   static const Duration _maxHoldDuration = Duration(minutes: 2);
+  static const Duration _holdDelay = Duration(milliseconds: 150);
 
   // Drag-to-lock state
   double _dragStartY = 0;
   double _currentDragY = 0;
+  bool _isDragging = false;
+  bool _dragLocked = false; // Track if this drag gesture triggered a lock
   static const double _lockThreshold = 100; // pixels to drag up to lock
 
   // Pulse animation for processing state
@@ -124,6 +128,7 @@ class _InputBarState extends State<InputBar> with SingleTickerProviderStateMixin
   @override
   void dispose() {
     _holdDurationTimer?.cancel();
+    _holdStartTimer?.cancel();
     _pulseController.dispose();
     _voiceManager.removeListener(_onVoiceStateChanged);
     _voiceManager.disconnect();
@@ -243,34 +248,45 @@ class _InputBarState extends State<InputBar> with SingleTickerProviderStateMixin
     }
   }
 
-  void _onMicLongPressStart(LongPressStartDetails details) async {
-    // Long press start: start batch recording
+  void _onMicPanStart(DragStartDetails details) {
+    // Pan start: begin tracking drag
     setState(() {
-      _isHolding = true;
+      _isDragging = true;
+      _dragLocked = false;
       _dragStartY = details.globalPosition.dy;
       _currentDragY = details.globalPosition.dy;
     });
 
-    // Start batch recording (await to ensure token is set)
-    try {
-      await _voiceManager.startBatchRecording();
-    } catch (e) {
-      debugPrint('Error starting batch recording: $e');
-    }
-
-    // Start timer to enforce max hold duration
-    _holdDurationTimer = Timer(_maxHoldDuration, () {
-      if (_isHolding && !_voiceManager.isBatchRecordingLocked) {
-        _voiceManager.stopBatchRecording();
+    // Start a delayed timer to begin batch recording if held
+    _holdStartTimer?.cancel();
+    _holdStartTimer = Timer(_holdDelay, () async {
+      if (_isDragging && !_dragLocked) {
         setState(() {
-          _isHolding = false;
+          _isHolding = true;
+        });
+
+        // Start batch recording
+        try {
+          await _voiceManager.startBatchRecording();
+        } catch (e) {
+          debugPrint('Error starting batch recording: $e');
+        }
+
+        // Start timer to enforce max hold duration
+        _holdDurationTimer = Timer(_maxHoldDuration, () {
+          if (_isHolding && !_voiceManager.isBatchRecordingLocked) {
+            _voiceManager.stopBatchRecording();
+            setState(() {
+              _isHolding = false;
+            });
+          }
         });
       }
     });
   }
 
-  void _onMicLongPressMoveUpdate(LongPressMoveUpdateDetails details) {
-    if (!_isHolding) return;
+  void _onMicPanUpdate(DragUpdateDetails details) {
+    if (!_isDragging) return;
 
     setState(() {
       _currentDragY = details.globalPosition.dy;
@@ -278,28 +294,68 @@ class _InputBarState extends State<InputBar> with SingleTickerProviderStateMixin
 
     // Check if dragged up enough to lock
     final dragDistance = _dragStartY - _currentDragY;
-    if (dragDistance >= _lockThreshold && !_voiceManager.isBatchRecordingLocked) {
-      // Lock the recording
-      _voiceManager.lockBatchRecording();
+    if (dragDistance >= _lockThreshold && !_dragLocked) {
+      // Cancel the hold start timer if it hasn't fired yet
+      _holdStartTimer?.cancel();
+      _holdStartTimer = null;
+
+      // Mark as drag-locked to prevent tap behavior
       setState(() {
-        _isHolding = false; // No longer holding, now locked
+        _dragLocked = true;
+        _isHolding = true;
+      });
+
+      // Start batch recording if not already started, then lock
+      if (!_voiceManager.isBatchRecording && !_voiceManager.isBatchRecordingLocked) {
+        _voiceManager.startBatchRecording().then((_) {
+          _voiceManager.lockBatchRecording();
+        });
+      } else {
+        // Already recording, just lock
+        _voiceManager.lockBatchRecording();
+      }
+
+      // Start timer to enforce max hold duration
+      _holdDurationTimer?.cancel();
+      _holdDurationTimer = Timer(_maxHoldDuration, () {
+        if (_voiceManager.isBatchRecordingLocked) {
+          _voiceManager.stopBatchRecording();
+        }
       });
     }
   }
 
-  void _onMicLongPressEnd(LongPressEndDetails details) {
-    // Long press end: stop recording if not locked
+  void _onMicPanEnd(DragEndDetails details) {
+    // Cancel timers
+    _holdStartTimer?.cancel();
+    _holdStartTimer = null;
     _holdDurationTimer?.cancel();
     _holdDurationTimer = null;
 
-    if (!_voiceManager.isBatchRecordingLocked) {
-      // Not locked: stop and upload
-      _voiceManager.stopBatchRecording();
-      setState(() {
-        _isHolding = false;
-      });
+    final wasDragging = _isDragging;
+    final wasHolding = _isHolding;
+    final wasLocked = _dragLocked;
+
+    setState(() {
+      _isDragging = false;
+      _isHolding = false;
+    });
+
+    if (wasLocked || _voiceManager.isBatchRecordingLocked) {
+      // Drag-locked: do nothing, user must tap to stop
+      return;
     }
-    // If locked, do nothing - user must tap again to stop
+
+    if (wasHolding && _voiceManager.isBatchRecording) {
+      // Was holding and recording: stop and upload
+      _voiceManager.stopBatchRecording();
+      return;
+    }
+
+    if (wasDragging && !wasHolding) {
+      // Quick tap (no hold started): toggle streaming mode
+      _onMicTap();
+    }
   }
 
   @override
@@ -439,10 +495,9 @@ class _InputBarState extends State<InputBar> with SingleTickerProviderStateMixin
                 }
 
                 return GestureDetector(
-                  onTap: _onMicTap,
-                  onLongPressStart: _onMicLongPressStart,
-                  onLongPressMoveUpdate: _onMicLongPressMoveUpdate,
-                  onLongPressEnd: _onMicLongPressEnd,
+                  onPanStart: _onMicPanStart,
+                  onPanUpdate: _onMicPanUpdate,
+                  onPanEnd: _onMicPanEnd,
                   child: micButton,
                 );
               },

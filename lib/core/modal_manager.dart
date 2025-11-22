@@ -74,9 +74,6 @@ class VosModalManager extends ChangeNotifier {
   static const double maxZoom = 2.0;
   static const double zoomStep = 0.1;
 
-  // Screen size (from outside Transform.scale)
-  Size? _screenSize;
-
   // Cache for performance
   List<ModalInstance>? _openModalsCache;
   List<ModalInstance>? _minimizedModalsCache;
@@ -313,7 +310,6 @@ class VosModalManager extends ChangeNotifier {
       isActiveNotifier: appId == 'chat' ? _chatIsActiveNotifier : null,
       stateNotifier: stateNotifier,
       zoomLevelNotifier: _zoomLevelNotifier,
-      screenSize: _screenSize,
       child: child,
     );
 
@@ -478,11 +474,6 @@ class VosModalManager extends ChangeNotifier {
     if (_zoomLevelNotifier.value != 1.0) {
       _zoomLevelNotifier.value = 1.0;
     }
-  }
-
-  // Set screen size from outside Transform.scale
-  void setScreenSize(Size size) {
-    _screenSize = size;
   }
 
   // Content builders for each app
