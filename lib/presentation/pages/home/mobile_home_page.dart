@@ -53,7 +53,6 @@ class _MobileAppSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 72,
       decoration: BoxDecoration(
         color: const Color(0xFF303030),
         boxShadow: [
@@ -64,7 +63,11 @@ class _MobileAppSelector extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
+      child: SafeArea(
+        bottom: false, // Only apply to top
+        child: SizedBox(
+          height: 72,
+          child: Row(
         children: [
           // Scrollable app icons
           Expanded(
@@ -134,6 +137,13 @@ class _MobileAppSelector extends StatelessWidget {
                   size: 48,
                   modalManager: modalManager,
                 ),
+                const SizedBox(width: 12),
+                AppIcon(
+                  appId: 'memory',
+                  icon: Icons.memory_outlined,
+                  size: 48,
+                  modalManager: modalManager,
+                ),
               ],
             ),
           ),
@@ -155,6 +165,8 @@ class _MobileAppSelector extends StatelessWidget {
             ),
           ),
         ],
+          ),
+        ),
       ),
     );
   }

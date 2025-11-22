@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:web_socket_channel/io.dart';
 import 'package:vos_app/core/models/chat_models.dart';
 import 'package:vos_app/core/config/app_config.dart';
 
@@ -69,7 +71,16 @@ class WebSocketService {
 
       debugPrint('🔌 Connecting to WebSocket: $uri');
 
-      _channel = WebSocketChannel.connect(uri);
+      // For Android emulator, add Host header for localhost
+      if (!kIsWeb && AppConfig.apiBaseUrl.contains('10.0.2.2')) {
+        debugPrint('🔧 Setting Host header to localhost:8000 for Android');
+        _channel = IOWebSocketChannel.connect(
+          uri,
+          headers: {'Host': 'localhost:8000'},
+        );
+      } else {
+        _channel = WebSocketChannel.connect(uri);
+      }
 
       // Listen to messages
       _messageSubscription = _channel!.stream.listen(

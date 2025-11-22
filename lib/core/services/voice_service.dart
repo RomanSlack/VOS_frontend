@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:web_socket_channel/io.dart';
 import 'package:record/record.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
@@ -195,7 +196,16 @@ class VoiceService {
 
       debugPrint('🎙️ Connecting to voice WebSocket: ${uri.replace(queryParameters: {'token': '[REDACTED]'})}');
 
-      _channel = WebSocketChannel.connect(uri);
+      // For Android emulator, add Host header for localhost
+      if (!kIsWeb && AppConfig.apiBaseUrl.contains('10.0.2.2')) {
+        debugPrint('🔧 Setting Host header to localhost:8100 for voice WebSocket');
+        _channel = IOWebSocketChannel.connect(
+          uri,
+          headers: {'Host': 'localhost:8100'},
+        );
+      } else {
+        _channel = WebSocketChannel.connect(uri);
+      }
 
       // Listen to messages
       _messageSubscription = _channel!.stream.listen(
