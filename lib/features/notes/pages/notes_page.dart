@@ -25,6 +25,7 @@ class _NotesPageState extends State<NotesPage> {
   final TextEditingController _searchController = TextEditingController();
   bool _showArchived = false;
   bool _showPinnedOnly = false;
+  bool _useSemanticSearch = true; // Default to semantic search
   String? _selectedFolder;
   Note? _selectedNote; // Track selected note for fullscreen view
   StreamSubscription<AppInteractionPayload>? _appInteractionSubscription;
@@ -128,6 +129,16 @@ class _NotesPageState extends State<NotesPage> {
   void _performSearch(String query) {
     if (query.isEmpty) {
       _loadNotes();
+    } else if (_useSemanticSearch) {
+      context.read<NotesBloc>().add(SemanticSearchNotes(
+            SemanticSearchRequest(
+              query: query,
+              folder: _selectedFolder,
+              limit: 20,
+              searchType: 'hybrid',
+              fetchFull: true,
+            ),
+          ));
     } else {
       context.read<NotesBloc>().add(SearchNotes(
             SearchNotesRequest(
@@ -216,33 +227,58 @@ class _NotesPageState extends State<NotesPage> {
           // Search bar - more compact
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search notes...',
-                prefixIcon: const Icon(Icons.search, size: 20),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear, size: 20),
-                        onPressed: () {
-                          _searchController.clear();
-                          _performSearch('');
-                        },
-                      )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: _useSemanticSearch ? 'Semantic search...' : 'Search notes...',
+                      prefixIcon: const Icon(Icons.search, size: 20),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 20),
+                              onPressed: () {
+                                _searchController.clear();
+                                _performSearch('');
+                              },
+                            )
+                          : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                      isDense: true,
+                    ),
+                    onSubmitted: _performSearch,
+                    onChanged: (value) {
+                      setState(() {});
+                      if (value.isEmpty) {
+                        _performSearch('');
+                      }
+                    },
+                  ),
                 ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                isDense: true,
-              ),
-              onSubmitted: _performSearch,
-              onChanged: (value) {
-                setState(() {});
-                if (value.isEmpty) {
-                  _performSearch('');
-                }
-              },
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: _useSemanticSearch ? 'Semantic search enabled' : 'Basic search',
+                  child: IconButton(
+                    icon: Icon(
+                      _useSemanticSearch ? Icons.psychology : Icons.text_fields,
+                      color: _useSemanticSearch ? Theme.of(context).colorScheme.primary : null,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _useSemanticSearch = !_useSemanticSearch;
+                      });
+                      // Re-search if there's a query
+                      if (_searchController.text.isNotEmpty) {
+                        _performSearch(_searchController.text);
+                      }
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
 
@@ -295,6 +331,7 @@ class _NotesPageState extends State<NotesPage> {
 
                 List<Note> notes = [];
                 int totalCount = 0;
+                bool isSemanticResult = false;
 
                 if (state is NotesLoaded) {
                   notes = state.notes;
@@ -302,6 +339,7 @@ class _NotesPageState extends State<NotesPage> {
                 } else if (state is NotesSearchResults) {
                   notes = state.notes;
                   totalCount = state.count;
+                  isSemanticResult = state.isSemantic;
                 } else if (state is NotesOperationSuccess) {
                   notes = state.notes;
                 }
@@ -441,11 +479,22 @@ class _NotesPageState extends State<NotesPage> {
                             child: Padding(
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               child: Center(
-                                child: Text(
-                                  'Showing ${notes.length} of $totalCount notes',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                        color: Colors.grey,
-                                      ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (isSemanticResult) ...[
+                                      Icon(Icons.psychology, size: 14, color: Colors.grey),
+                                      const SizedBox(width: 4),
+                                    ],
+                                    Text(
+                                      isSemanticResult
+                                          ? '${notes.length} semantic results'
+                                          : 'Showing ${notes.length} of $totalCount notes',
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                            color: Colors.grey,
+                                          ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),

@@ -15,6 +15,7 @@ class NotesBloc extends Bloc<NotesBlocEvent, NotesState> {
     on<UpdateNote>(_onUpdateNote);
     on<DeleteNote>(_onDeleteNote);
     on<SearchNotes>(_onSearchNotes);
+    on<SemanticSearchNotes>(_onSemanticSearchNotes);
     on<ArchiveNote>(_onArchiveNote);
     on<PinNote>(_onPinNote);
     on<RefreshNotes>(_onRefreshNotes);
@@ -282,6 +283,61 @@ class NotesBloc extends Bloc<NotesBlocEvent, NotesState> {
       }
     } catch (e) {
       emit(NotesError('Error searching notes', details: e.toString()));
+    }
+  }
+
+  Future<void> _onSemanticSearchNotes(
+    SemanticSearchNotes event,
+    Emitter<NotesState> emit,
+  ) async {
+    try {
+      emit(const NotesLoading());
+
+      final response = await notesApi.semanticSearchNotes(event.request);
+
+      final notesData = response['notes'] as List? ?? [];
+      final query = response['query'] as String? ?? event.request.query;
+      final count = response['count'] as int? ?? notesData.length;
+
+      final notes = <Note>[];
+      final relevanceScores = <int, double>{};
+
+      for (final item in notesData) {
+        final noteMap = item as Map<String, dynamic>;
+
+        // Map the response format to Note model
+        final note = Note(
+          id: noteMap['note_id'] as int,
+          title: noteMap['title'] as String? ?? '',
+          contentPreview: noteMap['content_preview'] as String?,
+          tags: (noteMap['tags'] as List?)?.cast<String>(),
+          folder: noteMap['folder'] as String?,
+          createdBy: '',
+          createdAt: noteMap['created_at'] != null
+              ? DateTime.parse(noteMap['created_at'] as String)
+              : null,
+          updatedAt: noteMap['updated_at'] != null
+              ? DateTime.parse(noteMap['updated_at'] as String)
+              : null,
+        );
+        notes.add(note);
+
+        // Extract relevance score
+        final score = noteMap['relevance_score'] as num?;
+        if (score != null) {
+          relevanceScores[note.id] = score.toDouble();
+        }
+      }
+
+      emit(NotesSearchResults(
+        notes: notes,
+        query: query,
+        count: count,
+        isSemantic: true,
+        relevanceScores: relevanceScores,
+      ));
+    } catch (e) {
+      emit(NotesError('Error performing semantic search', details: e.toString()));
     }
   }
 

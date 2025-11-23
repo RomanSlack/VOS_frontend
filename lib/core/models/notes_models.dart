@@ -249,6 +249,52 @@ class SearchNotesRequest {
 }
 
 @JsonSerializable()
+class SemanticSearchRequest {
+  final String query;
+  final int? limit;
+  final List<String>? tags;
+  final String? folder;
+  final double? alpha;
+  @JsonKey(name: 'search_type')
+  final String? searchType;
+  @JsonKey(name: 'fetch_full')
+  final bool? fetchFull;
+
+  SemanticSearchRequest({
+    required this.query,
+    this.limit,
+    this.tags,
+    this.folder,
+    this.alpha,
+    this.searchType,
+    this.fetchFull,
+  });
+
+  factory SemanticSearchRequest.fromJson(Map<String, dynamic> json) =>
+      _$SemanticSearchRequestFromJson(json);
+
+  Map<String, dynamic> toJson() => _$SemanticSearchRequestToJson(this);
+}
+
+@JsonSerializable()
+class SemanticSearchResult {
+  final Note note;
+  final double? score;
+  final double? distance;
+
+  SemanticSearchResult({
+    required this.note,
+    this.score,
+    this.distance,
+  });
+
+  factory SemanticSearchResult.fromJson(Map<String, dynamic> json) =>
+      _$SemanticSearchResultFromJson(json);
+
+  Map<String, dynamic> toJson() => _$SemanticSearchResultToJson(this);
+}
+
+@JsonSerializable()
 class ArchiveNoteRequest {
   @JsonKey(name: 'note_id')
   final int noteId;

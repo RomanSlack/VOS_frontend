@@ -18,6 +18,18 @@ abstract class NotesApi {
     @Query('agent_id') String? agentId,
     @Query('app_name') String? appName,
   });
+
+  // Semantic search endpoint
+  @GET('/api/v1/notes/search')
+  Future<dynamic> semanticSearch({
+    @Query('q') required String query,
+    @Query('limit') int? limit,
+    @Query('tags') String? tags,
+    @Query('folder') String? folder,
+    @Query('alpha') double? alpha,
+    @Query('search_type') String? searchType,
+    @Query('fetch_full') bool? fetchFull,
+  });
 }
 
 /// Helper class to simplify notes tool execution
@@ -158,5 +170,18 @@ class NotesToolHelper {
         parameters: request.toJson(),
       ),
     );
+  }
+
+  Future<Map<String, dynamic>> semanticSearchNotes(SemanticSearchRequest request) async {
+    final result = await _api.semanticSearch(
+      query: request.query,
+      limit: request.limit,
+      tags: request.tags?.join(','),
+      folder: request.folder,
+      alpha: request.alpha,
+      searchType: request.searchType ?? 'hybrid',
+      fetchFull: request.fetchFull ?? true,
+    );
+    return result as Map<String, dynamic>;
   }
 }

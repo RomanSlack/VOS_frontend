@@ -65,15 +65,19 @@ class NotesSearchResults extends NotesState {
   final List<Note> notes;
   final String query;
   final int count;
+  final bool isSemantic;
+  final Map<int, double>? relevanceScores; // noteId -> score
 
   const NotesSearchResults({
     required this.notes,
     required this.query,
     required this.count,
+    this.isSemantic = false,
+    this.relevanceScores,
   });
 
   @override
-  List<Object?> get props => [notes, query, count];
+  List<Object?> get props => [notes, query, count, isSemantic, relevanceScores];
 }
 
 // Operation success

@@ -219,27 +219,52 @@ class NoteCard extends StatelessWidget {
               // Content preview with markdown
               if (preview.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                SizedBox(
-                  height: maxLines * 20.0, // Approximate height per line
-                  child: MarkdownBody(
-                    data: preview,
-                    styleSheet: MarkdownStyleSheet(
-                      p: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.4),
-                      h1: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
-                      h2: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87),
-                      h3: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
-                      h4: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
-                      h5: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black87),
-                      h6: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.black87),
-                      code: TextStyle(backgroundColor: Colors.grey.shade300, fontSize: 13, color: Colors.black87),
-                      blockquote: const TextStyle(color: Colors.black54, fontStyle: FontStyle.italic),
-                      listBullet: const TextStyle(color: Colors.black87),
-                      tableBody: const TextStyle(color: Colors.black87),
-                      strong: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
-                      em: const TextStyle(fontStyle: FontStyle.italic, color: Colors.black87),
+                Stack(
+                  children: [
+                    SizedBox(
+                      height: maxLines * 20.0, // Approximate height per line
+                      child: ClipRect(
+                        child: MarkdownBody(
+                          data: preview,
+                          styleSheet: MarkdownStyleSheet(
+                            p: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.4),
+                            h1: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+                            h2: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87),
+                            h3: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+                            h4: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
+                            h5: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black87),
+                            h6: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.black87),
+                            code: TextStyle(backgroundColor: Colors.grey.shade300, fontSize: 13, color: Colors.black87),
+                            blockquote: const TextStyle(color: Colors.black54, fontStyle: FontStyle.italic),
+                            listBullet: const TextStyle(color: Colors.black87),
+                            tableBody: const TextStyle(color: Colors.black87),
+                            strong: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+                            em: const TextStyle(fontStyle: FontStyle.italic, color: Colors.black87),
+                          ),
+                          shrinkWrap: true,
+                        ),
+                      ),
                     ),
-                    shrinkWrap: true,
-                  ),
+                    // Fade overlay at bottom
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      height: 24,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              _getNoteColor().withOpacity(0),
+                              _getNoteColor(),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
 

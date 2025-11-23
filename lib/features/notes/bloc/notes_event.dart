@@ -84,6 +84,16 @@ class SearchNotes extends NotesBlocEvent {
   List<Object?> get props => [request];
 }
 
+// Semantic search notes
+class SemanticSearchNotes extends NotesBlocEvent {
+  final SemanticSearchRequest request;
+
+  const SemanticSearchNotes(this.request);
+
+  @override
+  List<Object?> get props => [request];
+}
+
 // Archive/unarchive note
 class ArchiveNote extends NotesBlocEvent {
   final ArchiveNoteRequest request;
