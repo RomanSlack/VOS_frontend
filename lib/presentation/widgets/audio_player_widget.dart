@@ -1,8 +1,12 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:dio/dio.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:vos_app/core/config/app_config.dart';
 
-/// Simple audio player widget for voice messages (web-only)
+/// Simple audio player widget for voice messages
 class AudioPlayerWidget extends StatefulWidget {
   final String audioFilePath;
   final bool autoPlay;
@@ -41,30 +45,23 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
         _hasCompleted = false;
       });
 
-      // Set the audio source from URL with custom headers for Android
-      // audioFilePath is a full URL (e.g., "http://10.0.2.2:8000/api/v1/audio/...")
       debugPrint('🎵 Loading audio from: ${widget.audioFilePath}');
 
-      // For Android emulator, add Host header
-      final headers = <String, String>{};
-      if (AppConfig.apiBaseUrl.contains('10.0.2.2')) {
-        headers['Host'] = 'localhost:8000';
-        debugPrint('🔧 Setting Host header to localhost:8000 for audio');
-      }
-
-      if (headers.isNotEmpty) {
-        // Use AudioSource with headers
-        await _player.setAudioSource(
-          AudioSource.uri(
-            Uri.parse(widget.audioFilePath),
-            headers: headers,
-          ),
-        );
-      } else {
-        // Use simple setUrl for web/production
+      // On web, use direct URL
+      if (kIsWeb) {
         await _player.setUrl(widget.audioFilePath);
+        debugPrint('✅ Audio loaded successfully (web)');
+      } else {
+        // On Android/mobile, download the file first with proper headers
+        // because ExoPlayer doesn't support custom headers properly
+        final localPath = await _downloadAudioFile(widget.audioFilePath);
+        if (localPath != null) {
+          await _player.setFilePath(localPath);
+          debugPrint('✅ Audio loaded successfully from local file: $localPath');
+        } else {
+          throw Exception('Failed to download audio file');
+        }
       }
-      debugPrint('✅ Audio loaded successfully');
 
       setState(() {
         _isLoading = false;
@@ -129,6 +126,52 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
           _hasError = true;
         });
       }
+    }
+  }
+
+  /// Download audio file with proper headers for Android
+  Future<String?> _downloadAudioFile(String url) async {
+    try {
+      // Create temp directory for audio cache
+      final tempDir = await getTemporaryDirectory();
+      final audioDir = Directory('${tempDir.path}/audio_cache');
+      if (!await audioDir.exists()) {
+        await audioDir.create(recursive: true);
+      }
+
+      // Create unique filename from URL
+      final fileName = url.split('/').last.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+      final filePath = '${audioDir.path}/$fileName';
+
+      // Check if file already exists
+      final file = File(filePath);
+      if (await file.exists()) {
+        debugPrint('📦 Using cached audio file: $filePath');
+        return filePath;
+      }
+
+      // Download with proper headers
+      debugPrint('⬇️ Downloading audio file...');
+      final dio = Dio();
+
+      // Add Host header for Android emulator
+      final headers = <String, String>{};
+      if (AppConfig.apiBaseUrl.contains('10.0.2.2')) {
+        headers['Host'] = 'localhost:8000';
+        debugPrint('🔧 Setting Host header to localhost:8000 for audio download');
+      }
+
+      await dio.download(
+        url,
+        filePath,
+        options: Options(headers: headers),
+      );
+
+      debugPrint('✅ Audio file downloaded to: $filePath');
+      return filePath;
+    } catch (e) {
+      debugPrint('❌ Failed to download audio file: $e');
+      return null;
     }
   }
 
