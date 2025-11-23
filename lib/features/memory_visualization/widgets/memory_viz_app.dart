@@ -182,21 +182,24 @@ class _MemoryVizAppState extends State<MemoryVizApp>
                             ],
                           ),
                         ),
-                        // Filter panel (sliding from right)
+                        // Filter panel (sliding from right, overlay on mobile)
                         if (_showFilters)
-                          Container(
-                            width: 280,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF212121),
-                              border: Border(
-                                left: BorderSide(
-                                  color: Colors.white.withOpacity(0.1),
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final isMobile = constraints.maxWidth < 600;
+                              return Container(
+                                width: isMobile ? constraints.maxWidth : 280,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF212121),
+                                  border: Border(
+                                    left: BorderSide(
+                                      color: Colors.white.withOpacity(0.1),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                            child: SingleChildScrollView(
-                              padding: const EdgeInsets.all(12),
-                              child: FilterPanel(
+                                child: SingleChildScrollView(
+                                  padding: const EdgeInsets.all(12),
+                                  child: FilterPanel(
                                 selectedMemoryType: state.filters['memory_type'] as String?,
                                 selectedScope: state.filters['scope'] as String?,
                                 minImportance: state.filters['min_importance'] as double?,
@@ -210,7 +213,9 @@ class _MemoryVizAppState extends State<MemoryVizApp>
                                   _memoryVizBloc.add(UpdateFilters(minImportance: value));
                                 },
                               ),
-                            ),
+                                ),
+                              );
+                            },
                           ),
                       ],
                     );

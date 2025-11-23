@@ -405,6 +405,84 @@ class _ChatAppState extends State<ChatApp> {
     );
   }
 
+  Widget _buildAgentStatusIndicator() {
+    return ValueListenableBuilder<String?>(
+      valueListenable: widget.statusNotifier,
+      builder: (context, status, child) {
+        if (status == null || status.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return Padding(
+          padding: const EdgeInsets.only(left: 0, top: 8, bottom: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // AI Avatar
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF00BCD4).withOpacity(0.1),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: const Color(0xFF00BCD4).withOpacity(0.3),
+                    width: 1.5,
+                  ),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.smart_toy_outlined,
+                    size: 18,
+                    color: Color(0xFF00BCD4),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Status bubble
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF303030),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(4),
+                      topRight: Radius.circular(16),
+                      bottomRight: Radius.circular(16),
+                      bottomLeft: Radius.circular(16),
+                    ),
+                    border: Border.all(
+                      color: const Color(0xFF00BCD4).withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _PulsingDot(),
+                      const SizedBox(width: 10),
+                      Flexible(
+                        child: Text(
+                          status,
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.9),
+                            fontSize: 13,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 44), // Balance for alignment
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildScrollToBottomButton() {
     final unreadCount = widget.chatManager.unreadCount;
 
@@ -567,12 +645,26 @@ class _ChatAppState extends State<ChatApp> {
                         final messages = widget.chatManager.messages;
                         final processedMessages = _processMessagesWithDates(messages);
 
+                        // Add extra item for agent status indicator
+                        final hasAgentStatus = widget.statusNotifier.value != null &&
+                                              widget.statusNotifier.value!.isNotEmpty;
+                        final totalItems = processedMessages.length + (hasAgentStatus ? 1 : 0);
+
                         return ScrollablePositionedList.builder(
                           itemScrollController: _itemScrollController,
                           itemPositionsListener: _itemPositionsListener,
                           padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-                          itemCount: processedMessages.length,
+                          itemCount: totalItems,
                           itemBuilder: (context, index) {
+                            // Show agent status indicator as last item
+                            if (hasAgentStatus && index == processedMessages.length) {
+                              return _buildAgentStatusIndicator();
+                            }
+
+                            // Regular message
+                            if (index >= processedMessages.length) {
+                              return const SizedBox.shrink();
+                            }
                             final item = processedMessages[index];
                             final messageIndex = messages.indexOf(item.message);
 

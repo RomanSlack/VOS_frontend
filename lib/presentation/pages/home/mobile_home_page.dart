@@ -139,7 +139,7 @@ class _MobileAppSelector extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 AppIcon(
-                  appId: 'memory',
+                  appId: 'memory_viz',
                   icon: Icons.memory_outlined,
                   size: 48,
                   modalManager: modalManager,
@@ -429,7 +429,6 @@ class _MobileInputBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: const Color(0xFF303030),
         boxShadow: [
@@ -441,12 +440,16 @@ class _MobileInputBar extends StatelessWidget {
         ],
       ),
       child: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width - 32,
+        top: false, // Don't apply top safe area
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width - 32,
+              ),
+              child: InputBar(modalManager: modalManager),
             ),
-            child: InputBar(modalManager: modalManager),
           ),
         ),
       ),
