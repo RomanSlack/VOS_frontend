@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:vos_app/core/config/app_config.dart';
 
 /// Simple audio player widget for voice messages (web-only)
 class AudioPlayerWidget extends StatefulWidget {
@@ -40,10 +41,29 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
         _hasCompleted = false;
       });
 
-      // Set the audio source from URL
-      // audioFilePath is a full URL (e.g., "https://api.jarvos.dev/api/v1/audio/...")
+      // Set the audio source from URL with custom headers for Android
+      // audioFilePath is a full URL (e.g., "http://10.0.2.2:8000/api/v1/audio/...")
       debugPrint('🎵 Loading audio from: ${widget.audioFilePath}');
-      await _player.setUrl(widget.audioFilePath);
+
+      // For Android emulator, add Host header
+      final headers = <String, String>{};
+      if (AppConfig.apiBaseUrl.contains('10.0.2.2')) {
+        headers['Host'] = 'localhost:8000';
+        debugPrint('🔧 Setting Host header to localhost:8000 for audio');
+      }
+
+      if (headers.isNotEmpty) {
+        // Use AudioSource with headers
+        await _player.setAudioSource(
+          AudioSource.uri(
+            Uri.parse(widget.audioFilePath),
+            headers: headers,
+          ),
+        );
+      } else {
+        // Use simple setUrl for web/production
+        await _player.setUrl(widget.audioFilePath);
+      }
       debugPrint('✅ Audio loaded successfully');
 
       setState(() {

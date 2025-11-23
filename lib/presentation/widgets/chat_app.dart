@@ -459,7 +459,14 @@ class _ChatAppState extends State<ChatApp> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      _PulsingDot(),
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF00BCD4),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
                       const SizedBox(width: 10),
                       Flexible(
                         child: Text(
