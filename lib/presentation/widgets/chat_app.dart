@@ -13,6 +13,8 @@ import 'package:vos_app/core/services/websocket_service.dart';
 import 'package:vos_app/utils/timestamp_formatter.dart';
 import 'package:vos_app/utils/chat_toast.dart';
 import 'package:vos_app/presentation/widgets/audio_player_widget.dart';
+import 'package:vos_app/presentation/widgets/message_attachments.dart';
+import 'package:vos_app/presentation/widgets/message_documents.dart';
 
 class ChatApp extends StatefulWidget {
   final ChatManager chatManager;
@@ -1126,6 +1128,8 @@ class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble>
 
   Widget _buildUserMessage() {
     final isVoiceMessage = widget.message.inputMode == 'voice';
+    final hasAttachments = widget.message.hasAttachments;
+    final hasDocuments = widget.message.hasDocuments;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -1171,15 +1175,34 @@ class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble>
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onSecondaryTapDown: (details) => _showContextMenu(context, details),
-              child: _HoverableMessageBubble(
-                isUser: true,
-                showAvatar: widget.showAvatar,
-                bubbleColor: _getBubbleColor(),
-                borderColor: _getBorderColor(),
-                child: _buildMessageContent(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  // Image attachments (displayed above bubble)
+                  if (hasAttachments)
+                    MessageAttachments(
+                      attachments: widget.message.attachments!,
+                      isUserMessage: true,
+                    ),
+                  // Documents (displayed above bubble)
+                  if (hasDocuments)
+                    MessageDocuments(
+                      documents: widget.message.documents!,
+                      isUserMessage: true,
+                    ),
+                  // Message bubble (only if there's text content)
+                  if (widget.message.text.isNotEmpty && !widget.message.text.startsWith('Sent '))
+                    _HoverableMessageBubble(
+                      isUser: true,
+                      showAvatar: widget.showAvatar,
+                      bubbleColor: _getBubbleColor(),
+                      borderColor: _getBorderColor(),
+                      child: _buildMessageContent(),
+                    ),
+                ],
               ),
             ),
-            ),
+          ),
           if (widget.showAvatar)
             Container(
               width: 32,
@@ -1208,6 +1231,8 @@ class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble>
 
   Widget _buildAIMessage() {
     final hasAudio = widget.message.audioFilePath != null;
+    final hasDocuments = widget.message.hasDocuments;
+    final hasAttachments = widget.message.hasAttachments;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -1277,6 +1302,22 @@ class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble>
                         ],
                         // Message content
                         _buildMessageContent(),
+                        // Attachments (images) from AI
+                        if (hasAttachments) ...[
+                          const SizedBox(height: 8),
+                          MessageAttachments(
+                            attachments: widget.message.attachments!,
+                            isUserMessage: false,
+                          ),
+                        ],
+                        // Documents from AI
+                        if (hasDocuments) ...[
+                          const SizedBox(height: 8),
+                          MessageDocuments(
+                            documents: widget.message.documents!,
+                            isUserMessage: false,
+                          ),
+                        ],
                       ],
                     ),
                   ),

@@ -92,6 +92,10 @@ class NewMessagePayload {
   final String? audioUrl;
   @JsonKey(name: 'audio_duration_ms')
   final int? audioDurationMs;
+  @JsonKey(name: 'attachment_ids')
+  final List<String>? attachmentIds; // Image attachments sent by agent
+  @JsonKey(name: 'document_ids')
+  final List<String>? documentIds; // Document references sent by agent
 
   const NewMessagePayload({
     required this.sessionId,
@@ -105,6 +109,8 @@ class NewMessagePayload {
     this.audioFilePath,
     this.audioUrl,
     this.audioDurationMs,
+    this.attachmentIds,
+    this.documentIds,
   });
 
   factory NewMessagePayload.fromJson(Map<String, dynamic> json) =>
@@ -187,11 +193,14 @@ class VosMessageRequestDto {
   final String? sessionId;
   @JsonKey(name: 'user_timezone')
   final String? userTimezone;
+  @JsonKey(name: 'attachment_ids')
+  final List<String>? attachmentIds;
 
   const VosMessageRequestDto({
     required this.text,
     this.sessionId,
     this.userTimezone,
+    this.attachmentIds,
   });
 
   factory VosMessageRequestDto.fromJson(Map<String, dynamic> json) =>
@@ -301,6 +310,10 @@ class ConversationMessageDto {
   final String? audioUrl;
   @JsonKey(name: 'audio_duration_ms')
   final int? audioDurationMs;
+  @JsonKey(name: 'attachment_ids')
+  final List<String>? attachmentIds; // Image attachments
+  @JsonKey(name: 'document_ids')
+  final List<String>? documentIds; // Document references
 
   const ConversationMessageDto({
     required this.id,
@@ -315,6 +328,8 @@ class ConversationMessageDto {
     this.audioFilePath,
     this.audioUrl,
     this.audioDurationMs,
+    this.attachmentIds,
+    this.documentIds,
   });
 
   factory ConversationMessageDto.fromJson(Map<String, dynamic> json) =>

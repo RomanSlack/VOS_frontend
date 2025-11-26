@@ -1,12 +1,16 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:vos_app/presentation/widgets/circle_icon.dart';
+import 'package:vos_app/presentation/widgets/attachment_preview.dart';
 import 'package:vos_app/core/modal_manager.dart';
 import 'package:vos_app/core/chat_manager.dart';
+import 'package:vos_app/core/models/attachment_models.dart';
 import 'package:vos_app/core/managers/voice_manager.dart';
 import 'package:vos_app/core/services/voice_batch_service.dart';
 import 'package:vos_app/core/services/session_service.dart';
+import 'package:vos_app/core/services/attachment_service.dart';
 import 'package:vos_app/core/di/injection.dart';
 import 'package:vos_app/utils/chat_toast.dart';
 
@@ -26,6 +30,8 @@ class _InputBarState extends State<InputBar> with SingleTickerProviderStateMixin
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   late final VoiceManager _voiceManager;
+  late final AttachmentService _attachmentService;
+  bool _showAttachmentPreview = false;
 
   // Hold-to-record state (for batch recording)
   bool _isHolding = false;
@@ -49,6 +55,7 @@ class _InputBarState extends State<InputBar> with SingleTickerProviderStateMixin
   void initState() {
     super.initState();
     _voiceManager = getIt<VoiceManager>();
+    _attachmentService = getIt<AttachmentService>();
 
     // Initialize pulse animation for processing state
     _pulseController = AnimationController(
@@ -68,6 +75,15 @@ class _InputBarState extends State<InputBar> with SingleTickerProviderStateMixin
 
     // Listen for final transcriptions and audio
     _voiceManager.addListener(_onVoiceStateChanged);
+
+    // Listen for attachment changes
+    _attachmentService.addListener(_onAttachmentChanged);
+  }
+
+  void _onAttachmentChanged() {
+    setState(() {
+      _showAttachmentPreview = _attachmentService.hasPendingAttachments;
+    });
   }
 
   Future<void> _initializeVoiceConnection() async {
@@ -132,6 +148,7 @@ class _InputBarState extends State<InputBar> with SingleTickerProviderStateMixin
     _pulseController.dispose();
     _voiceManager.removeListener(_onVoiceStateChanged);
     _voiceManager.disconnect();
+    _attachmentService.removeListener(_onAttachmentChanged);
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -145,14 +162,34 @@ class _InputBarState extends State<InputBar> with SingleTickerProviderStateMixin
   }
 
   void _handleSubmit(String text) async {
-    if (text.trim().isEmpty) return;
+    // Allow empty text if there are attachments
+    final hasAttachments = _attachmentService.hasPendingAttachments;
+    if (text.trim().isEmpty && !hasAttachments) return;
+
+    // Check if all attachments are uploaded
+    if (hasAttachments && !_attachmentService.allUploaded) {
+      ChatToast.showError('Please wait for images to finish uploading');
+      return;
+    }
+
+    // Get attachments before clearing
+    List<ChatAttachment>? attachments;
+    if (hasAttachments) {
+      attachments = await _attachmentService.convertToChatAttachments();
+    }
 
     // Clear the input immediately for better UX
     _controller.clear();
     _focusNode.unfocus();
 
-    // Add optimistic message immediately
-    final messageId = widget.modalManager.chatManager.addOptimisticMessage(text);
+    // Clear pending attachments
+    _attachmentService.clearPendingAttachments();
+
+    // Add optimistic message immediately with attachments
+    final messageId = widget.modalManager.chatManager.addOptimisticMessage(
+      text.isEmpty && attachments != null ? 'Sent ${attachments.length} image(s)' : text,
+      attachments: attachments,
+    );
 
     // Only open chat if it's not already visible
     final isChatVisible = widget.modalManager.isModalOpen('chat') &&
@@ -164,6 +201,66 @@ class _InputBarState extends State<InputBar> with SingleTickerProviderStateMixin
 
     // The ChatApp will detect the new user message and trigger the AI response
     // which will handle updating the message status
+  }
+
+  Future<void> _pickImages() async {
+    await _attachmentService.pickImages(maxImages: 5);
+  }
+
+  void _showAttachmentOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF2D2D2D),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFF00BCD4),
+                  child: Icon(Icons.photo_library, color: Colors.white),
+                ),
+                title: const Text(
+                  'Photo Library',
+                  style: TextStyle(color: Colors.white),
+                ),
+                subtitle: const Text(
+                  'Select images from your gallery',
+                  style: TextStyle(color: Colors.white54, fontSize: 12),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _attachmentService.pickImages(maxImages: 5);
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFF4CAF50),
+                  child: Icon(Icons.camera_alt, color: Colors.white),
+                ),
+                title: const Text(
+                  'Camera',
+                  style: TextStyle(color: Colors.white),
+                ),
+                subtitle: const Text(
+                  'Take a new photo',
+                  style: TextStyle(color: Colors.white54, fontSize: 12),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _attachmentService.pickFromCamera();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _handleVoiceSubmit(String text) async {
@@ -365,155 +462,196 @@ class _InputBarState extends State<InputBar> with SingleTickerProviderStateMixin
     final isMobile = screenWidth < 900;
     final containerWidth = isMobile ? double.infinity : 600.0;
 
-    return Stack(
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-      height: 60,
-      width: containerWidth,
-      margin: EdgeInsets.only(bottom: isMobile ? 0 : 24),
-      decoration: BoxDecoration(
-        color: const Color(0xFF303030),
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            offset: const Offset(0, 4),
-            blurRadius: 12,
-            spreadRadius: 1,
+        // Attachment preview (above input bar)
+        if (_showAttachmentPreview)
+          Container(
+            width: containerWidth,
+            margin: EdgeInsets.only(bottom: 8),
+            child: const AttachmentPreview(),
           ),
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            offset: const Offset(0, 2),
-            blurRadius: 6,
-            spreadRadius: 0,
-          ),
-        ],
-        // Simple uniform border for bevel effect
-        border: Border.all(
-          color: Colors.white.withOpacity(0.1),
-          width: 1,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(
+
+        // Input bar
+        Stack(
           children: [
-            Expanded(
-              child: ListenableBuilder(
-                listenable: _voiceManager,
-                builder: (context, child) {
-                  final isLocked = _voiceManager.isBatchRecordingLocked;
-                  final duration = _voiceManager.batchRecordingDuration;
-
-                  // Show duration when locked, otherwise show default hint
-                  String hintText = 'Ask anything';
-                  Color hintColor = const Color(0xFF757575);
-
-                  if (isLocked && duration != null) {
-                    hintText = '● Recording ${_formatDuration(duration)}  •  Tap mic to send';
-                    hintColor = Colors.red.shade400;
-                  }
-
-                  return TextField(
-                    controller: _controller,
-                    focusNode: _focusNode,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
+            Container(
+              height: 60,
+              width: containerWidth,
+              margin: EdgeInsets.only(bottom: isMobile ? 0 : 24),
+              decoration: BoxDecoration(
+                color: const Color(0xFF303030),
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    offset: const Offset(0, 4),
+                    blurRadius: 12,
+                    spreadRadius: 1,
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    offset: const Offset(0, 2),
+                    blurRadius: 6,
+                    spreadRadius: 0,
+                  ),
+                ],
+                // Simple uniform border for bevel effect
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.1),
+                  width: 1,
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  children: [
+                    // Image attachment button
+                    CircleIcon(
+                      icon: Icons.image_outlined,
+                      size: 40,
+                      useFontAwesome: false,
+                      onPressed: _showAttachmentOptions,
                     ),
-                    decoration: InputDecoration(
-                      hintText: hintText,
-                      hintStyle: TextStyle(
-                        color: hintColor,
-                        fontSize: 16,
+                    const SizedBox(width: 4),
+                    // Attachment indicator
+                    ListenableBuilder(
+                      listenable: _attachmentService,
+                      builder: (context, child) {
+                        if (!_attachmentService.hasPendingAttachments) {
+                          return const SizedBox.shrink();
+                        }
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: AttachmentIndicator(
+                            onTap: () {
+                              setState(() {
+                                _showAttachmentPreview = !_showAttachmentPreview;
+                              });
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                    Expanded(
+                      child: ListenableBuilder(
+                        listenable: _voiceManager,
+                        builder: (context, child) {
+                          final isLocked = _voiceManager.isBatchRecordingLocked;
+                          final duration = _voiceManager.batchRecordingDuration;
+
+                          // Show duration when locked, otherwise show default hint
+                          String hintText = 'Ask anything';
+                          Color hintColor = const Color(0xFF757575);
+
+                          if (isLocked && duration != null) {
+                            hintText = '● Recording ${_formatDuration(duration)}  •  Tap mic to send';
+                            hintColor = Colors.red.shade400;
+                          }
+
+                          return TextField(
+                            controller: _controller,
+                            focusNode: _focusNode,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: hintText,
+                              hintStyle: TextStyle(
+                                color: hintColor,
+                                fontSize: 16,
+                              ),
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              filled: false,
+                              fillColor: Colors.transparent,
+                              contentPadding: const EdgeInsets.only(left: 8),
+                            ),
+                            cursorColor: Colors.white,
+                            onSubmitted: _handleSubmit,
+                            textInputAction: TextInputAction.send,
+                          );
+                        },
                       ),
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      filled: false,
-                      fillColor: Colors.transparent,
-                      contentPadding: const EdgeInsets.only(left: 8),
                     ),
-                    cursorColor: Colors.white,
-                    onSubmitted: _handleSubmit,
-                    textInputAction: TextInputAction.send,
-                  );
-                },
+                    const SizedBox(width: 8),
+                    ListenableBuilder(
+                      listenable: _voiceManager,
+                      builder: (context, child) {
+                        final isListening = _voiceManager.isListening;
+                        final isBatchRecording = _voiceManager.isBatchRecording;
+                        final isLocked = _voiceManager.isBatchRecordingLocked;
+                        final batchStatus = _voiceManager.batchStatus;
+                        final isProcessing = batchStatus == BatchRecordingStatus.uploading ||
+                                             batchStatus == BatchRecordingStatus.transcribing;
+
+                        // Determine background color based on state
+                        Color? backgroundColor;
+                        if (isProcessing) {
+                          backgroundColor = Colors.orange.shade700;
+                        } else if (isLocked) {
+                          backgroundColor = Colors.blue.shade700;
+                        } else if (_isHolding) {
+                          backgroundColor = Colors.orange.shade700;
+                        } else if (isListening || isBatchRecording) {
+                          backgroundColor = Colors.red.shade700;
+                        }
+
+                        // Show lock icon when locked, otherwise mic icon
+                        final icon = isLocked
+                            ? Icons.lock
+                            : (isListening || isBatchRecording || isProcessing ? Icons.mic : Icons.mic_none_outlined);
+
+                        Widget micButton = CircleIcon(
+                          icon: icon,
+                          size: 40,
+                          useFontAwesome: false,
+                          onPressed: null,
+                          backgroundColor: backgroundColor,
+                        );
+
+                        // Wrap with pulse animation when processing
+                        if (isProcessing) {
+                          micButton = AnimatedBuilder(
+                            animation: _pulseAnimation,
+                            builder: (context, child) {
+                              return Transform.scale(
+                                scale: _pulseAnimation.value,
+                                child: Opacity(
+                                  opacity: 0.5 + (_pulseAnimation.value * 0.5),
+                                  child: child,
+                                ),
+                              );
+                            },
+                            child: micButton,
+                          );
+                        }
+
+                        return GestureDetector(
+                          onPanStart: _onMicPanStart,
+                          onPanUpdate: _onMicPanUpdate,
+                          onPanEnd: _onMicPanEnd,
+                          child: micButton,
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 4),
+                    CircleIcon(
+                      icon: Icons.graphic_eq_outlined,
+                      size: 40,
+                      useFontAwesome: false,
+                      onPressed: () {
+                        // Handle waveform tap
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(width: 12),
-            ListenableBuilder(
-              listenable: _voiceManager,
-              builder: (context, child) {
-                final isListening = _voiceManager.isListening;
-                final isBatchRecording = _voiceManager.isBatchRecording;
-                final isLocked = _voiceManager.isBatchRecordingLocked;
-                final batchStatus = _voiceManager.batchStatus;
-                final isProcessing = batchStatus == BatchRecordingStatus.uploading ||
-                                     batchStatus == BatchRecordingStatus.transcribing;
-
-                // Determine background color based on state
-                Color? backgroundColor;
-                if (isProcessing) {
-                  backgroundColor = Colors.orange.shade700; // Processing = orange (will pulse)
-                } else if (isLocked) {
-                  backgroundColor = Colors.blue.shade700; // Locked = blue
-                } else if (_isHolding) {
-                  backgroundColor = Colors.orange.shade700; // Holding = orange
-                } else if (isListening || isBatchRecording) {
-                  backgroundColor = Colors.red.shade700; // Active = red
-                }
-
-                // Show lock icon when locked, otherwise mic icon
-                final icon = isLocked
-                    ? Icons.lock
-                    : (isListening || isBatchRecording || isProcessing ? Icons.mic : Icons.mic_none_outlined);
-
-                Widget micButton = CircleIcon(
-                  icon: icon,
-                  size: 40,
-                  useFontAwesome: false,
-                  onPressed: null, // Disabled, using GestureDetector instead
-                  backgroundColor: backgroundColor,
-                );
-
-                // Wrap with pulse animation when processing
-                if (isProcessing) {
-                  micButton = AnimatedBuilder(
-                    animation: _pulseAnimation,
-                    builder: (context, child) {
-                      return Transform.scale(
-                        scale: _pulseAnimation.value,
-                        child: Opacity(
-                          opacity: 0.5 + (_pulseAnimation.value * 0.5),
-                          child: child,
-                        ),
-                      );
-                    },
-                    child: micButton,
-                  );
-                }
-
-                return GestureDetector(
-                  onPanStart: _onMicPanStart,
-                  onPanUpdate: _onMicPanUpdate,
-                  onPanEnd: _onMicPanEnd,
-                  child: micButton,
-                );
-              },
-            ),
-            const SizedBox(width: 8),
-            CircleIcon(
-              icon: Icons.graphic_eq_outlined,
-              size: 40,
-              useFontAwesome: false,
-              onPressed: () {
-                // Handle waveform tap
-              },
-            ),
           ],
-        ),
-      ),
         ),
       ],
     );

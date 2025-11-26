@@ -8,6 +8,8 @@ import 'package:vos_app/core/services/voice_service.dart';
 import 'package:vos_app/core/services/voice_batch_service.dart';
 import 'package:vos_app/core/services/calendar_service.dart';
 import 'package:vos_app/core/services/notes_service.dart';
+import 'package:vos_app/core/services/attachment_service.dart';
+import 'package:vos_app/core/services/document_service.dart';
 import 'package:vos_app/core/managers/voice_manager.dart';
 import 'package:vos_app/core/api/memory_api.dart';
 import 'package:vos_app/features/calendar/bloc/calendar_bloc.dart';
@@ -35,6 +37,8 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton<NotesService>(() => NotesService());
   getIt.registerLazySingleton<AuthService>(() => AuthService());
   getIt.registerLazySingleton<SettingsService>(() => SettingsService());
+  getIt.registerLazySingleton<AttachmentService>(() => AttachmentService());
+  getIt.registerLazySingleton<DocumentService>(() => DocumentService());
 
   // Register voice manager (depends on VoiceService, VoiceBatchService, and SettingsService)
   getIt.registerLazySingleton<VoiceManager>(

@@ -1,6 +1,8 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
+import 'package:vos_app/core/models/attachment_models.dart';
+import 'package:vos_app/core/models/document_models.dart';
 
 enum AgentProcessingState {
   idle,
@@ -45,6 +47,8 @@ class ChatManager extends ChangeNotifier {
     int? voiceMessageId,
     String? audioFilePath,
     int? audioDurationMs,
+    List<ChatAttachment>? attachments,
+    List<Document>? documents,
   }) {
     _messages.add(ChatMessage(
       text: text,
@@ -55,6 +59,8 @@ class ChatManager extends ChangeNotifier {
       voiceMessageId: voiceMessageId,
       audioFilePath: audioFilePath,
       audioDurationMs: audioDurationMs,
+      attachments: attachments,
+      documents: documents,
     ));
     notifyListeners();
   }
@@ -64,6 +70,7 @@ class ChatManager extends ChangeNotifier {
     String text, {
     String inputMode = 'text',
     VoiceMetadata? voiceMetadata,
+    List<ChatAttachment>? attachments,
   }) {
     final message = ChatMessage(
       text: text,
@@ -72,6 +79,7 @@ class ChatManager extends ChangeNotifier {
       status: MessageStatus.sending,
       inputMode: inputMode,
       voiceMetadata: voiceMetadata,
+      attachments: attachments,
     );
     _messages.add(message);
     notifyListeners();
@@ -198,6 +206,8 @@ class ChatMessage {
   final int? voiceMessageId; // Backend voice message ID
   final String? audioFilePath; // For AI voice responses (relative path from backend)
   final int? audioDurationMs; // Audio duration in milliseconds
+  final List<ChatAttachment>? attachments; // Image/file attachments
+  final List<Document>? documents; // Document references
 
   ChatMessage({
     String? id,
@@ -211,7 +221,19 @@ class ChatMessage {
     this.voiceMessageId,
     this.audioFilePath,
     this.audioDurationMs,
+    this.attachments,
+    this.documents,
   }) : id = id ?? const Uuid().v4();
+
+  // Check if message has attachments
+  bool get hasAttachments => attachments != null && attachments!.isNotEmpty;
+
+  // Check if message has documents
+  bool get hasDocuments => documents != null && documents!.isNotEmpty;
+
+  // Get image attachments only
+  List<ChatAttachment> get imageAttachments =>
+      attachments?.where((a) => a.isImage).toList() ?? [];
 
   // Add copyWith for status updates
   ChatMessage copyWith({
@@ -225,6 +247,8 @@ class ChatMessage {
     int? voiceMessageId,
     String? audioFilePath,
     int? audioDurationMs,
+    List<ChatAttachment>? attachments,
+    List<Document>? documents,
   }) {
     return ChatMessage(
       id: this.id,
@@ -238,6 +262,8 @@ class ChatMessage {
       voiceMessageId: voiceMessageId ?? this.voiceMessageId,
       audioFilePath: audioFilePath ?? this.audioFilePath,
       audioDurationMs: audioDurationMs ?? this.audioDurationMs,
+      attachments: attachments ?? this.attachments,
+      documents: documents ?? this.documents,
     );
   }
 }

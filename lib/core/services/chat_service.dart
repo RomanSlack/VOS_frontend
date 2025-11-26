@@ -4,11 +4,15 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:vos_app/core/api/chat_api.dart';
 import 'package:vos_app/core/models/chat_models.dart';
+import 'package:vos_app/core/models/attachment_models.dart';
+import 'package:vos_app/core/models/document_models.dart';
 import 'package:vos_app/core/chat_manager.dart';
 import 'package:vos_app/core/services/websocket_service.dart';
 import 'package:vos_app/core/services/auth_service.dart';
 import 'package:vos_app/core/services/session_service.dart';
+import 'package:vos_app/core/services/document_service.dart';
 import 'package:vos_app/core/config/app_config.dart';
+import 'package:vos_app/core/di/injection.dart';
 import 'package:vos_app/utils/timezone_helper.dart';
 
 class ChatService {
@@ -78,7 +82,7 @@ class ChatService {
       if (chatManager != null) {
         _messageSubscription?.cancel();
         _messageSubscription = _webSocketService.messageStream.listen(
-          (payload) {
+          (payload) async {
             // Verbose logging disabled for performance
             // debugPrint('📦 WebSocket payload received:');
             // debugPrint('  - sessionId: ${payload.sessionId}');
@@ -101,7 +105,21 @@ class ChatService {
               debugPrint('⚠️ No audio URL in payload');
             }
 
-            // Add agent message to chat with audio metadata
+            // Fetch attachment metadata if agent sent images
+            List<ChatAttachment>? attachments;
+            if (payload.attachmentIds != null && payload.attachmentIds!.isNotEmpty) {
+              debugPrint('🖼️ Agent sent ${payload.attachmentIds!.length} attachments');
+              attachments = await _fetchAttachmentsMetadata(payload.attachmentIds!);
+            }
+
+            // Fetch document metadata if agent sent documents
+            List<Document>? documents;
+            if (payload.documentIds != null && payload.documentIds!.isNotEmpty) {
+              debugPrint('📄 Agent sent ${payload.documentIds!.length} documents');
+              documents = await _fetchDocumentsMetadata(payload.documentIds!);
+            }
+
+            // Add agent message to chat with audio, attachment, and document metadata
             chatManager.addMessage(
               actualMessage,
               false,
@@ -109,6 +127,8 @@ class ChatService {
               voiceMessageId: payload.voiceMessageId,
               audioFilePath: fullAudioUrl,
               audioDurationMs: payload.audioDurationMs,
+              attachments: attachments,
+              documents: documents,
             );
             debugPrint('💬 Added message from ${payload.agentId}');
           },
@@ -216,6 +236,75 @@ class ChatService {
     }
   }
 
+  /// Fetch attachment metadata for given attachment IDs
+  /// Returns list of ChatAttachment objects with signed URLs
+  Future<List<ChatAttachment>> _fetchAttachmentsMetadata(List<String> attachmentIds) async {
+    final attachments = <ChatAttachment>[];
+
+    for (final attachmentId in attachmentIds) {
+      try {
+        // Fetch metadata
+        final metadataResponse = await _dio.get('/api/v1/attachments/$attachmentId');
+        final metadata = metadataResponse.data as Map<String, dynamic>;
+
+        // Fetch signed URL
+        final urlResponse = await _dio.get('/api/v1/attachments/$attachmentId/url');
+        final urlData = urlResponse.data as Map<String, dynamic>;
+        final signedUrl = urlData['url'] as String?;
+
+        // Build full URL
+        String? fullUrl;
+        if (signedUrl != null) {
+          fullUrl = signedUrl.startsWith('http')
+              ? signedUrl
+              : '${AppConfig.apiBaseUrl}$signedUrl';
+        }
+
+        attachments.add(ChatAttachment(
+          attachmentId: attachmentId,
+          url: fullUrl,
+          fileName: metadata['original_filename'] as String? ?? 'attachment',
+          contentType: metadata['content_type'] as String? ?? 'image/png',
+          width: metadata['width'] as int?,
+          height: metadata['height'] as int?,
+        ));
+
+        debugPrint('📎 Loaded attachment: $attachmentId');
+      } catch (e) {
+        debugPrint('⚠️ Failed to load attachment $attachmentId: $e');
+        // Still add a placeholder attachment so the message knows it had images
+        attachments.add(ChatAttachment(
+          attachmentId: attachmentId,
+          fileName: 'attachment',
+          contentType: 'image/unknown',
+        ));
+      }
+    }
+
+    return attachments;
+  }
+
+  /// Fetch documents for given document IDs
+  /// Returns list of Document objects
+  Future<List<Document>> _fetchDocumentsMetadata(List<String> documentIds) async {
+    final documents = <Document>[];
+    final documentService = getIt<DocumentService>();
+
+    for (final documentId in documentIds) {
+      try {
+        final document = await documentService.getDocument(documentId);
+        if (document != null) {
+          documents.add(document);
+          debugPrint('📄 Loaded document: $documentId');
+        }
+      } catch (e) {
+        debugPrint('⚠️ Failed to load document $documentId: $e');
+      }
+    }
+
+    return documents;
+  }
+
   /// Load conversation history from the backend
   Future<List<ChatMessage>> loadConversationHistory({String? sessionId}) async {
     try {
@@ -251,6 +340,46 @@ class ChatService {
           fullAudioUrl = '${AppConfig.apiBaseUrl}${msg.audioUrl}';
         }
 
+        // Fetch attachments if message has attachment_ids
+        // Check both direct field and metadata (backend stores in metadata.attachment_ids)
+        List<ChatAttachment>? attachments;
+        List<String>? attachmentIds = msg.attachmentIds;
+
+        // Fallback: extract from metadata if direct field is empty
+        if ((attachmentIds == null || attachmentIds.isEmpty) && msg.metadata != null) {
+          final metadataIds = msg.metadata!['attachment_ids'];
+          if (metadataIds is List && metadataIds.isNotEmpty) {
+            attachmentIds = metadataIds.cast<String>();
+          }
+        }
+
+        if (attachmentIds != null && attachmentIds.isNotEmpty) {
+          attachments = await _fetchAttachmentsMetadata(attachmentIds);
+        }
+
+        // Fetch documents if message has document_ids
+        // Check both direct field and metadata (backend stores in metadata.document_ids)
+        List<Document>? documents;
+        List<String>? documentIds = msg.documentIds;
+
+        debugPrint('📋 Message: documentIds=$documentIds, metadata=${msg.metadata}');
+
+        // Fallback: extract from metadata if direct field is empty
+        if ((documentIds == null || documentIds.isEmpty) && msg.metadata != null) {
+          final metadataIds = msg.metadata!['document_ids'];
+          debugPrint('📋 Checking metadata for document_ids: $metadataIds');
+          if (metadataIds is List && metadataIds.isNotEmpty) {
+            documentIds = metadataIds.cast<String>();
+            debugPrint('📋 Extracted document_ids from metadata: $documentIds');
+          }
+        }
+
+        if (documentIds != null && documentIds.isNotEmpty) {
+          debugPrint('📄 Fetching ${documentIds.length} documents for message');
+          documents = await _fetchDocumentsMetadata(documentIds);
+          debugPrint('📄 Loaded ${documents.length} documents');
+        }
+
         messages.add(ChatMessage(
           text: messageText,
           isUser: isUser,
@@ -259,6 +388,8 @@ class ChatService {
           voiceMessageId: msg.voiceMessageId,
           audioFilePath: fullAudioUrl, // Store full URL for playback
           audioDurationMs: msg.audioDurationMs,
+          attachments: attachments,
+          documents: documents,
         ));
       }
 
@@ -282,7 +413,17 @@ class ChatService {
         throw Exception('No user message to send');
       }
 
-      final lastUserMessage = userMessages.last.text;
+      final lastMessage = userMessages.last;
+      final lastUserMessage = lastMessage.text;
+
+      // Extract attachment IDs if present
+      List<String>? attachmentIds;
+      if (lastMessage.hasAttachments) {
+        attachmentIds = lastMessage.attachments!
+            .map((a) => a.attachmentId)
+            .toList();
+        debugPrint('📎 Sending message with ${attachmentIds.length} attachments');
+      }
 
       // Get user's timezone for calendar operations
       final userTimezone = _getUserTimezone();
@@ -296,6 +437,7 @@ class ChatService {
         text: lastUserMessage,
         sessionId: sessionId,
         userTimezone: userTimezone,
+        attachmentIds: attachmentIds,
       );
       final sendResponse = await _chatApi.sendMessage(request);
 
