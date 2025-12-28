@@ -1,17 +1,22 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:vos_app/core/chat_manager.dart';
+import 'package:vos_app/core/services/chat_service.dart';
+import 'package:vos_app/core/models/chat_models.dart';
 import 'package:vos_app/presentation/widgets/web_browser_view.dart'
   if (dart.library.io) 'package:vos_app/presentation/widgets/web_browser_view_stub.dart';
 
 class BrowserApp extends StatefulWidget {
   final ChatManager? chatManager;
+  final ChatService? chatService;
 
   const BrowserApp({
     super.key,
     this.chatManager,
+    this.chatService,
   });
 
   @override
@@ -32,20 +37,38 @@ class _BrowserAppState extends State<BrowserApp> {
   // History
   final List<String> _history = [];
   int _historyIndex = -1;
+  
+  // Screenshot stream subscription
+  StreamSubscription<BrowserScreenshotPayload>? _screenshotSubscription;
 
   @override
   void initState() {
     super.initState();
     // Listen for browser notifications from chat manager
     widget.chatManager?.addListener(_onChatUpdate);
+    
+    // Subscribe to browser screenshot stream
+    _screenshotSubscription = widget.chatService?.browserScreenshotStream.listen(_onScreenshotReceived);
   }
 
   @override
   void dispose() {
     widget.chatManager?.removeListener(_onChatUpdate);
+    _screenshotSubscription?.cancel();
     _urlController.dispose();
     _urlFocusNode.dispose();
     super.dispose();
+  }
+  
+  void _onScreenshotReceived(BrowserScreenshotPayload payload) {
+    debugPrint('BrowserApp received screenshot for ${payload.currentUrl}');
+    if (payload.currentUrl != null) {
+      setState(() {
+        _currentUrl = payload.currentUrl;
+        _urlController.text = payload.currentUrl!;
+      });
+    }
+    _displayScreenshot(payload.screenshotBase64);
   }
 
   void _onChatUpdate() {
@@ -54,7 +77,6 @@ class _BrowserAppState extends State<BrowserApp> {
     if (messages.isEmpty) return;
 
     // Look for recent AI messages that might contain screenshot info
-    // Since screenshots are sent via chat, we parse the message text
     for (var i = messages.length - 1; i >= 0 && i >= messages.length - 5; i--) {
       final message = messages[i];
       if (message.isUser) continue;
@@ -92,7 +114,6 @@ class _BrowserAppState extends State<BrowserApp> {
       });
     }
   }
-
   void _navigateToUrl() {
     final url = _urlController.text.trim();
     if (url.isEmpty) return;
@@ -354,6 +375,18 @@ class _BrowserAppState extends State<BrowserApp> {
   }
 
   Widget _buildContent() {
+    // If we have a screenshot from the browser agent, display it
+    if (_screenshotBytes != null) {
+      return InteractiveViewer(
+        child: Center(
+          child: Image.memory(
+            _screenshotBytes!,
+            fit: BoxFit.contain,
+          ),
+        ),
+      );
+    }
+
     // If we have a URL, show the browser
     if (_currentUrl != null && _currentUrl!.isNotEmpty && kIsWeb) {
       return WebBrowserView(

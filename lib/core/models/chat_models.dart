@@ -417,3 +417,30 @@ class SessionListResponseDto {
 
   Map<String, dynamic> toJson() => _$SessionListResponseDtoToJson(this);
 }
+@JsonSerializable()
+class BrowserScreenshotPayload {
+  @JsonKey(name: 'agent_id')
+  final String agentId;
+  @JsonKey(name: 'session_id')
+  final String? sessionId;
+  @JsonKey(name: 'screenshot_base64')
+  final String screenshotBase64;
+  @JsonKey(name: 'current_url')
+  final String? currentUrl;
+  final String? task;
+  final String timestamp;
+
+  const BrowserScreenshotPayload({
+    required this.agentId,
+    this.sessionId,
+    required this.screenshotBase64,
+    this.currentUrl,
+    this.task,
+    required this.timestamp,
+  });
+
+  factory BrowserScreenshotPayload.fromJson(Map<String, dynamic> json) =>
+      _$BrowserScreenshotPayloadFromJson(json);
+
+  Map<String, dynamic> toJson() => _$BrowserScreenshotPayloadToJson(this);
+}

@@ -26,6 +26,7 @@ class WebSocketService {
   final _statusController = StreamController<AgentStatusPayload>.broadcast();
   final _actionController = StreamController<AgentActionStatusPayload>.broadcast();
   final _appInteractionController = StreamController<AppInteractionPayload>.broadcast();
+  final _browserScreenshotController = StreamController<BrowserScreenshotPayload>.broadcast();
   final _stateController = StreamController<WebSocketConnectionState>.broadcast();
 
   // Getters for streams
@@ -33,6 +34,7 @@ class WebSocketService {
   Stream<AgentStatusPayload> get statusStream => _statusController.stream;
   Stream<AgentActionStatusPayload> get actionStream => _actionController.stream;
   Stream<AppInteractionPayload> get appInteractionStream => _appInteractionController.stream;
+  Stream<BrowserScreenshotPayload> get browserScreenshotStream => _browserScreenshotController.stream;
   Stream<WebSocketConnectionState> get stateStream => _stateController.stream;
   WebSocketConnectionState get state => _state;
 
@@ -167,6 +169,12 @@ class WebSocketService {
           debugPrint('📱 App interaction: ${payload.appName} - ${payload.action}');
           break;
 
+        case 'browser_screenshot':
+          final payload = BrowserScreenshotPayload.fromJson(notification.payload);
+          _browserScreenshotController.add(payload);
+          debugPrint('Browser screenshot received: ${payload.currentUrl}');
+          break;
+
         default:
           debugPrint('Unknown notification type: ${notification.notificationType}');
       }
@@ -260,6 +268,7 @@ class WebSocketService {
     _statusController.close();
     _actionController.close();
     _appInteractionController.close();
+    _browserScreenshotController.close();
     _stateController.close();
   }
 }

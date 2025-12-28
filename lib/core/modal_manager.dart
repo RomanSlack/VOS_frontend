@@ -536,6 +536,7 @@ class VosModalManager extends ChangeNotifier {
 
   Widget _buildBrowserContent() {
     return BrowserApp(
+      chatService: _chatService,
       chatManager: _chatManager,
     );
   }

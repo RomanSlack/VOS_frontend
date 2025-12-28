@@ -198,6 +198,8 @@ class ChatService {
   /// Get WebSocket app interaction stream for UI updates
   Stream<AppInteractionPayload> get appInteractionStream => _webSocketService.appInteractionStream;
 
+  Stream<BrowserScreenshotPayload> get browserScreenshotStream => _webSocketService.browserScreenshotStream;
+
   /// Get user's timezone (IANA timezone name)
   /// Returns timezone string like "America/New_York" or null if unavailable
   String? _getUserTimezone() {
