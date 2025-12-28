@@ -1,13 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:vos_app/core/chat_manager.dart';
 import 'package:vos_app/core/services/chat_service.dart';
 import 'package:vos_app/core/models/chat_models.dart';
-import 'package:vos_app/presentation/widgets/web_browser_view.dart'
-  if (dart.library.io) 'package:vos_app/presentation/widgets/web_browser_view_stub.dart';
 
 class BrowserApp extends StatefulWidget {
   final ChatManager? chatManager;
@@ -26,7 +23,6 @@ class BrowserApp extends StatefulWidget {
 class _BrowserAppState extends State<BrowserApp> {
   final TextEditingController _urlController = TextEditingController();
   final FocusNode _urlFocusNode = FocusNode();
-  WebBrowserView? _browserView;
 
   String? _currentUrl;
   String? _currentTitle;
@@ -387,18 +383,49 @@ class _BrowserAppState extends State<BrowserApp> {
       );
     }
 
-    // If we have a URL, show the browser
-    if (_currentUrl != null && _currentUrl!.isNotEmpty && kIsWeb) {
-      return WebBrowserView(
-        initialUrl: _currentUrl,
-        onUrlChanged: (url) {
-          if (mounted) {
-            setState(() {
-              _currentUrl = url;
-              _currentTitle = url;
-            });
-          }
-        },
+    // If we have a URL but no screenshot yet, show loading/waiting message
+    if (_currentUrl != null && _currentUrl!.isNotEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (_isLoading)
+              const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00BCD4)),
+              )
+            else
+              const Icon(
+                Icons.photo_camera_outlined,
+                size: 64,
+                color: Color(0xFF757575),
+              ),
+            const SizedBox(height: 16),
+            Text(
+              _isLoading ? 'Waiting for browser agent...' : 'No screenshot yet',
+              style: const TextStyle(
+                color: Color(0xFF757575),
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _currentUrl!,
+              style: const TextStyle(
+                color: Color(0xFF00BCD4),
+                fontSize: 12,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Ask the AI to browse this URL to see it here',
+              style: TextStyle(
+                color: Color(0xFF757575),
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
       );
     }
 
