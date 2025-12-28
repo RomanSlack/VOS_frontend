@@ -519,15 +519,15 @@ class _BrowserAppState extends State<BrowserApp> {
                 ),
                 const SizedBox(height: 16),
                 _buildQuickStartItem(
-                  '1. Enter any URL in the address bar above',
+                  '1. Ask the AI to browse a website',
                 ),
                 const SizedBox(height: 8),
                 _buildQuickStartItem(
-                  '2. Click "Go" or press Enter',
+                  '2. The browser agent will navigate and capture',
                 ),
                 const SizedBox(height: 8),
                 _buildQuickStartItem(
-                  '3. Website loads directly in the browser!',
+                  '3. Screenshots appear here automatically!',
                 ),
                 const SizedBox(height: 16),
                 Container(
@@ -544,11 +544,11 @@ class _BrowserAppState extends State<BrowserApp> {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.info_outline, size: 16, color: Color(0xFF00BCD4)),
+                          Icon(Icons.smart_toy_outlined, size: 16, color: Color(0xFF00BCD4)),
                           SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'Note: Some sites block iframe embedding',
+                              'AI-Powered Browsing',
                               style: TextStyle(
                                 color: Color(0xFF00BCD4),
                                 fontSize: 13,
@@ -560,7 +560,7 @@ class _BrowserAppState extends State<BrowserApp> {
                       ),
                       SizedBox(height: 8),
                       Text(
-                        'Try these iframe-friendly sites:',
+                        'Example commands:',
                         style: TextStyle(
                           color: Color(0xFF00BCD4),
                           fontSize: 12,
@@ -569,7 +569,7 @@ class _BrowserAppState extends State<BrowserApp> {
                       ),
                       SizedBox(height: 4),
                       Text(
-                        '• wikipedia.org\n• example.com\n• w3schools.com\n• stackoverflow.com',
+                        '• "Go to google.com"\n• "Search for weather in NYC"\n• "Navigate to wikipedia.org"',
                         style: TextStyle(
                           color: Color(0xFF00BCD4),
                           fontSize: 11,
