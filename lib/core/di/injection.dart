@@ -3,6 +3,7 @@ import 'package:injectable/injectable.dart';
 import 'package:dio/dio.dart';
 import 'package:vos_app/core/di/injection.config.dart';
 import 'package:vos_app/core/services/chat_service.dart';
+import 'package:vos_app/core/services/websocket_service.dart';
 import 'package:vos_app/core/services/weather_service.dart';
 import 'package:vos_app/core/services/voice_service.dart';
 import 'package:vos_app/core/services/voice_batch_service.dart';
@@ -10,6 +11,7 @@ import 'package:vos_app/core/services/calendar_service.dart';
 import 'package:vos_app/core/services/notes_service.dart';
 import 'package:vos_app/core/services/attachment_service.dart';
 import 'package:vos_app/core/services/document_service.dart';
+import 'package:vos_app/core/services/call_service.dart';
 import 'package:vos_app/core/managers/voice_manager.dart';
 import 'package:vos_app/core/api/memory_api.dart';
 import 'package:vos_app/features/calendar/bloc/calendar_bloc.dart';
@@ -29,6 +31,7 @@ final getIt = GetIt.instance;
 )
 Future<void> configureDependencies() async {
   // Register services manually since they're not using injectable
+  getIt.registerLazySingleton<WebSocketService>(() => WebSocketService());
   getIt.registerLazySingleton<ChatService>(() => ChatService());
   getIt.registerLazySingleton<WeatherService>(() => WeatherService());
   getIt.registerLazySingleton<VoiceService>(() => VoiceService());
@@ -39,6 +42,11 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton<SettingsService>(() => SettingsService());
   getIt.registerLazySingleton<AttachmentService>(() => AttachmentService());
   getIt.registerLazySingleton<DocumentService>(() => DocumentService());
+
+  // Register call service (depends on AuthService)
+  getIt.registerLazySingleton<CallService>(
+    () => CallService(getIt<AuthService>()),
+  );
 
   // Register voice manager (depends on VoiceService, VoiceBatchService, and SettingsService)
   getIt.registerLazySingleton<VoiceManager>(

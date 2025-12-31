@@ -61,7 +61,8 @@ class ChatService {
     // }
 
     _chatApi = ChatApi(_dio, baseUrl: AppConfig.apiBaseUrl);
-    _webSocketService = WebSocketService();
+    // Use shared WebSocketService from DI container
+    _webSocketService = getIt<WebSocketService>();
   }
 
   /// Initialize WebSocket connection for a session

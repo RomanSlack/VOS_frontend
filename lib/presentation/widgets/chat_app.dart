@@ -654,22 +654,12 @@ class _ChatAppState extends State<ChatApp> {
                         final messages = widget.chatManager.messages;
                         final processedMessages = _processMessagesWithDates(messages);
 
-                        // Add extra item for agent status indicator
-                        final hasAgentStatus = widget.statusNotifier.value != null &&
-                                              widget.statusNotifier.value!.isNotEmpty;
-                        final totalItems = processedMessages.length + (hasAgentStatus ? 1 : 0);
-
                         return ScrollablePositionedList.builder(
                           itemScrollController: _itemScrollController,
                           itemPositionsListener: _itemPositionsListener,
                           padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-                          itemCount: totalItems,
+                          itemCount: processedMessages.length,
                           itemBuilder: (context, index) {
-                            // Show agent status indicator as last item
-                            if (hasAgentStatus && index == processedMessages.length) {
-                              return _buildAgentStatusIndicator();
-                            }
-
                             // Regular message
                             if (index >= processedMessages.length) {
                               return const SizedBox.shrink();

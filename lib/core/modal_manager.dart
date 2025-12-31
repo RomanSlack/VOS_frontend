@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 import 'package:vos_app/presentation/widgets/vos_modal.dart';
 import 'package:vos_app/presentation/widgets/chat_app.dart';
 import 'package:vos_app/presentation/widgets/calendar_app_new.dart';
@@ -9,11 +10,13 @@ import 'package:vos_app/presentation/widgets/browser_app.dart';
 import 'package:vos_app/core/chat_manager.dart';
 import 'package:vos_app/core/services/chat_service.dart';
 import 'package:vos_app/core/services/weather_service.dart';
+import 'package:vos_app/core/services/call_service.dart';
 import 'package:vos_app/features/calendar/bloc/calendar_bloc.dart';
 import 'package:vos_app/features/notes/bloc/notes_bloc.dart';
 import 'package:vos_app/features/notes/bloc/notes_event.dart';
 import 'package:vos_app/features/notes/pages/notes_page.dart';
 import 'package:vos_app/features/memory_visualization/widgets/memory_viz_app.dart';
+import 'package:vos_app/features/phone/pages/phone_page.dart';
 import 'package:vos_app/core/di/injection.dart';
 
 // App definitions for each modal
@@ -163,13 +166,6 @@ class VosModalManager extends ChangeNotifier {
       contentBuilder: _buildPhoneContent,
     ),
     // Note: Calendar app is handled specially - see openModal method
-    AppDefinition(
-      id: 'tasks',
-      title: 'Tasks',
-      icon: Icons.check_circle_outline,
-      accentColor: Color(0xFF9C27B0),
-      contentBuilder: _buildTasksContent,
-    ),
     // Note: Browser app is handled specially - see openModal method
     AppDefinition(
       id: 'analytics',
@@ -177,13 +173,6 @@ class VosModalManager extends ChangeNotifier {
       icon: Icons.bar_chart_outlined,
       accentColor: Color(0xFF607D8B),
       contentBuilder: _buildAnalyticsContent,
-    ),
-    AppDefinition(
-      id: 'shop',
-      title: 'Shop',
-      icon: Icons.shopping_cart_outlined,
-      accentColor: Color(0xFFE91E63),
-      contentBuilder: _buildShopContent,
     ),
     // Note: Chat and weather apps are handled specially - see openModal method
   ];
@@ -485,54 +474,11 @@ class VosModalManager extends ChangeNotifier {
 
   // Content builders for each app
   static Widget _buildPhoneContent() {
-    return Container(
-      color: const Color(0xFF212121),
-      child: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.phone_outlined, size: 64, color: Color(0xFF4CAF50)),
-            SizedBox(height: 16),
-            Text(
-              'Phone App',
-              style: TextStyle(color: Color(0xFFEDEDED), fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Make and receive calls',
-              style: TextStyle(color: Color(0xFF757575), fontSize: 14),
-            ),
-          ],
-        ),
-      ),
+    return Provider<CallService>.value(
+      value: getIt<CallService>(),
+      child: const PhonePage(),
     );
   }
-
-
-  static Widget _buildTasksContent() {
-    return Container(
-      color: const Color(0xFF212121),
-      child: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.check_circle_outline, size: 64, color: Color(0xFF9C27B0)),
-            SizedBox(height: 16),
-            Text(
-              'Tasks App',
-              style: TextStyle(color: Color(0xFFEDEDED), fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Track your to-dos',
-              style: TextStyle(color: Color(0xFF757575), fontSize: 14),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
 
   Widget _buildBrowserContent() {
     return BrowserApp(
@@ -557,30 +503,6 @@ class VosModalManager extends ChangeNotifier {
             SizedBox(height: 8),
             Text(
               'View your data insights',
-              style: TextStyle(color: Color(0xFF757575), fontSize: 14),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  static Widget _buildShopContent() {
-    return Container(
-      color: const Color(0xFF212121),
-      child: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.shopping_cart_outlined, size: 64, color: Color(0xFFE91E63)),
-            SizedBox(height: 16),
-            Text(
-              'Shop App',
-              style: TextStyle(color: Color(0xFFEDEDED), fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Browse and buy products',
               style: TextStyle(color: Color(0xFF757575), fontSize: 14),
             ),
           ],

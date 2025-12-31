@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:vos_app/core/models/chat_models.dart';
+import 'package:vos_app/core/models/call_models.dart';
 import 'package:vos_app/core/config/app_config.dart';
 
 enum WebSocketConnectionState {
@@ -27,6 +28,7 @@ class WebSocketService {
   final _actionController = StreamController<AgentActionStatusPayload>.broadcast();
   final _appInteractionController = StreamController<AppInteractionPayload>.broadcast();
   final _browserScreenshotController = StreamController<BrowserScreenshotPayload>.broadcast();
+  final _incomingCallController = StreamController<IncomingCallPayload>.broadcast();
   final _stateController = StreamController<WebSocketConnectionState>.broadcast();
 
   // Getters for streams
@@ -35,6 +37,7 @@ class WebSocketService {
   Stream<AgentActionStatusPayload> get actionStream => _actionController.stream;
   Stream<AppInteractionPayload> get appInteractionStream => _appInteractionController.stream;
   Stream<BrowserScreenshotPayload> get browserScreenshotStream => _browserScreenshotController.stream;
+  Stream<IncomingCallPayload> get incomingCallStream => _incomingCallController.stream;
   Stream<WebSocketConnectionState> get stateStream => _stateController.stream;
   WebSocketConnectionState get state => _state;
 
@@ -124,6 +127,24 @@ class WebSocketService {
 
         case 'notification':
           _handleNotification(message.data as Map<String, dynamic>);
+          break;
+
+        case 'incoming_call':
+          // Handle incoming call from agent
+          print('📞 WebSocketService: Processing incoming_call message');
+          print('📞 message.data type: ${message.data.runtimeType}');
+          print('📞 message.data: ${message.data}');
+          try {
+            final callData = message.data as Map<String, dynamic>? ?? jsonData;
+            print('📞 callData: $callData');
+            final payload = IncomingCallPayload.fromJson(callData);
+            print('📞 Parsed payload - callId: ${payload.callId}, caller: ${payload.callerAgentId}');
+            _incomingCallController.add(payload);
+            print('📞 Added payload to incomingCallController stream');
+          } catch (e, stack) {
+            print('📞 Error parsing incoming call: $e');
+            print('📞 Stack: $stack');
+          }
           break;
 
         case 'error':
@@ -269,6 +290,7 @@ class WebSocketService {
     _actionController.close();
     _appInteractionController.close();
     _browserScreenshotController.close();
+    _incomingCallController.close();
     _stateController.close();
   }
 }

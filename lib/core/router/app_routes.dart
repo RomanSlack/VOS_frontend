@@ -9,4 +9,6 @@ class AppRoutes {
   static const String settings = '/settings';
   static const String voiceTest = '/voice-test';
   static const String notes = '/notes';
+  static const String phone = '/phone';
+  static const String activeCall = '/phone/call';
 }

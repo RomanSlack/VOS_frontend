@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:injectable/injectable.dart';
+import 'package:provider/provider.dart';
 import 'package:vos_app/core/router/app_routes.dart';
 import 'package:vos_app/core/services/auth_service.dart';
+import 'package:vos_app/core/services/call_service.dart';
 import 'package:vos_app/presentation/pages/home/home_page.dart';
 import 'package:vos_app/presentation/pages/splash/splash_page.dart';
 import 'package:vos_app/presentation/pages/login/login_page.dart';
 import 'package:vos_app/features/voice/pages/voice_test_page.dart';
 import 'package:vos_app/features/notes/pages/notes_page.dart';
 import 'package:vos_app/features/settings/pages/settings_page.dart';
+import 'package:vos_app/features/phone/pages/phone_page.dart';
+import 'package:vos_app/features/phone/pages/active_call_page.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vos_app/core/di/injection.dart';
 import 'package:vos_app/features/notes/bloc/notes_bloc.dart';
@@ -77,6 +81,22 @@ class AppRouter {
           path: AppRoutes.settings,
           name: AppRoutes.settings,
           builder: (context, state) => const SettingsPage(),
+        ),
+        GoRoute(
+          path: AppRoutes.phone,
+          name: AppRoutes.phone,
+          builder: (context, state) => Provider<CallService>.value(
+            value: getIt<CallService>(),
+            child: const PhonePage(),
+          ),
+        ),
+        GoRoute(
+          path: AppRoutes.activeCall,
+          name: AppRoutes.activeCall,
+          builder: (context, state) => Provider<CallService>.value(
+            value: getIt<CallService>(),
+            child: const ActiveCallPage(),
+          ),
         ),
       ],
       errorBuilder: (context, state) => _ErrorPage(error: state.error),
