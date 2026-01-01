@@ -41,6 +41,12 @@ class _PhonePageState extends State<PhonePage> {
     // Listen for incoming calls
     _callService.incomingCallStream.listen(_onIncomingCall);
 
+    // Listen for errors
+    _callService.errorStream.listen((error) {
+       _showError(error);
+       if (mounted) setState(() => _isConnecting = false);
+    });
+
     // Check for existing active call on init and load history
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_callService.isOnCall) {
@@ -121,13 +127,17 @@ class _PhonePageState extends State<PhonePage> {
       // Initiate call
       final success = await _callService.initiateCall();
       if (!success) {
-        _showError('Failed to initiate call');
+        // Error will be emitted via errorStream if specific, 
+        // otherwise this generic one might show if stream didn't fire
+        // _showError('Failed to initiate call'); 
       }
     } catch (e) {
       _showError('Error: $e');
     } finally {
+      // _isConnecting is reset in errorStream listener or valid connection logic
+      // But we keep it here as safety net
       if (mounted) {
-        setState(() => _isConnecting = false);
+         // specific errors reset connect state via listener
       }
     }
   }

@@ -40,6 +40,8 @@ class CallService {
 
   // Audio playback
   final AudioPlayer _player = AudioPlayer();
+  final List<Uint8List> _audioQueue = [];
+  bool _isPlaying = false;
 
   // Keepalive timer
   Timer? _keepaliveTimer;
@@ -110,10 +112,11 @@ class CallService {
       debugPrint('Connecting to call WebSocket: $wsUrl');
 
       // Connect
-      if (!kIsWeb && AppConfig.apiBaseUrl.contains('10.0.2.2')) {
+      if (!kIsWeb && (AppConfig.apiBaseUrl.contains('10.0.2.2') || AppConfig.apiBaseUrl.contains('localhost'))) {
         _channel = IOWebSocketChannel.connect(
           Uri.parse(wsUrl),
           headers: {'Host': 'localhost:8000'},
+          pingInterval: const Duration(seconds: 5),
         );
       } else {
         _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
@@ -145,6 +148,7 @@ class CallService {
     _keepaliveTimer?.cancel();
 
     await stopRecording();
+    _clearAudioQueue();
     await _player.stop();
 
     await _messageSubscription?.cancel();
@@ -209,15 +213,29 @@ class CallService {
   Future<bool> initiateCall({String targetAgent = 'primary_agent'}) async {
     if (_channel == null) {
       debugPrint('Not connected to WebSocket');
+      _errorController.add('Not connected to server');
       return false;
     }
 
+    // Force cleanup if we're in a weird state but the user wants to call
     if (_callState != CallState.idle && _callState != CallState.ended) {
-      debugPrint('Already in a call');
-      return false;
+      debugPrint('Warning: Attempting to call while state is $_callState. Forcing cleanup.');
+      await endCall();
+      // Give it a moment to reset
+      await Future.delayed(const Duration(milliseconds: 200));
+      
+      if (_callState != CallState.idle && _callState != CallState.ended) {
+         debugPrint('Still in call state after cleanup. Cannot initiate.');
+         _errorController.add('Already in a call');
+         return false;
+      }
     }
 
     try {
+      // Clear any previous call state to be safe
+      _currentCall = null;
+      _callController.add(null);
+      
       _sendMessage({
         'type': 'initiate_call',
         'target_agent': targetAgent,
@@ -271,17 +289,37 @@ class CallService {
 
   /// End the current call
   Future<bool> endCall() async {
-    if (_channel == null || _currentCall == null) return false;
+    // Immediate state update for UI responsiveness
+    _updateCallState(CallState.ending);
+    await stopRecording();
+    
+    // Clear local state immediately for UX
+    _currentCall = null;
+    _callController.add(null);
+    _audioQueue.clear(); 
+    _isPlaying = false;
+
+    if (_channel == null) {
+       _updateCallState(CallState.idle);
+       return false;
+    }
 
     try {
       _sendMessage({'type': 'end_call'});
-
-      _updateCallState(CallState.ending);
-      await stopRecording();
+      
+      // Don't rely solely on server response for cleanup
+      // But give it a chance to send back stats or final messages
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (_callState != CallState.idle) {
+          _updateCallState(CallState.idle);
+        }
+      });
 
       return true;
     } catch (e) {
-      debugPrint('Failed to end call: $e');
+      debugPrint('Failed to send end call message: $e');
+      // Ensure we reset even if network fails
+      _updateCallState(CallState.idle);
       return false;
     }
   }
@@ -647,24 +685,48 @@ class CallService {
   // Audio Playback
   // ===========================================================================
 
-  Future<void> _playAudio(Uint8List audio) async {
+  // ===========================================================================
+  // Audio Playback
+  // ===========================================================================
+
+  void _playAudio(Uint8List audio) {
+    _audioQueue.add(audio);
+    _processAudioQueue();
+  }
+
+  Future<void> _processAudioQueue() async {
+    if (_isPlaying || _audioQueue.isEmpty) return;
+
+    _isPlaying = true;
+    _agentSpeakingController.add(true);
+
     try {
-      _agentSpeakingController.add(true);
+      while (_audioQueue.isNotEmpty) {
+        final audio = _audioQueue.removeAt(0);
+        
+        // Use just_audio's bytes source
+        await _player.setAudioSource(_BytesAudioSource(audio));
+        await _player.play();
 
-      // Use just_audio's bytes source
-      await _player.setAudioSource(_BytesAudioSource(audio));
-      await _player.play();
-
-      // Wait for completion
-      await _player.playerStateStream.firstWhere(
-        (state) => state.processingState == ProcessingState.completed,
-      );
-
-      _agentSpeakingController.add(false);
+        // Wait for completion or stop
+        await _player.playerStateStream.firstWhere(
+          (state) => 
+            state.processingState == ProcessingState.completed || 
+            state.processingState == ProcessingState.idle,
+        );
+      }
     } catch (e) {
       debugPrint('Error playing audio: $e');
+    } finally {
+      _isPlaying = false;
       _agentSpeakingController.add(false);
     }
+  }
+
+  void _clearAudioQueue() {
+    _audioQueue.clear();
+    _isPlaying = false;
+    _agentSpeakingController.add(false);
   }
 
   // ===========================================================================

@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:vos_app/core/router/app_routes.dart';
 
 import 'package:vos_app/core/models/call_models.dart';
 import 'package:vos_app/core/services/call_service.dart';
@@ -52,11 +54,10 @@ class _FloatingCallOverlayState extends State<FloatingCallOverlay> {
       if (!mounted) return;
       setState(() => _callState = state);
 
-      // Auto-dismiss when call ends
+      // Auto-dismiss when call ends or disconnects
       if (state == CallState.ended || state == CallState.idle) {
-        Future.delayed(const Duration(seconds: 1), () {
-          widget.onDismiss?.call();
-        });
+         // Immediate dismissal for better UX
+         widget.onDismiss?.call();
       }
     });
 
@@ -139,7 +140,7 @@ class _FloatingCallOverlayState extends State<FloatingCallOverlay> {
             width: _isExpanded ? 200 : 70,
             height: _isExpanded ? 180 : 70,
             padding: const EdgeInsets.all(12),
-            child: _isExpanded ? _buildExpanded() : _buildMinimized(),
+            child: _isExpanded ? _buildExpanded(context) : _buildMinimized(),
           ),
         ),
       ),
@@ -187,56 +188,73 @@ class _FloatingCallOverlayState extends State<FloatingCallOverlay> {
     );
   }
 
-  Widget _buildExpanded() {
+  Widget _buildExpanded(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Header row
-        Row(
-          children: [
-            // Avatar
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.2),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: _agentSpeaking ? Colors.blue : Colors.transparent,
-                  width: 2,
+        // Header row - Tap to open full screen
+        GestureDetector(
+          onTap: () {
+            // Navigate to active call page
+            // Use pushNamed so we can return to this overlay state
+            GoRouter.of(context).pushNamed(AppRoutes.activeCall);
+          },
+          child: Row(
+            children: [
+              // Avatar
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: _agentSpeaking ? Colors.blue : Colors.transparent,
+                    width: 2,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.smart_toy,
+                  size: 20,
+                  color: Colors.blue,
                 ),
               ),
-              child: const Icon(
-                Icons.smart_toy,
-                size: 20,
-                color: Colors.blue,
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Name and status
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _formatAgentName(_currentCall?.currentAgentId),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
+              const SizedBox(width: 12),
+              // Name and status
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _formatAgentName(_currentCall?.currentAgentId),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
                     ),
-                  ),
-                  Text(
-                    _getStatusText(),
-                    style: TextStyle(
-                      color: Colors.grey[400],
-                      fontSize: 12,
+                    Row(
+                      children: [
+                        Text(
+                          _getStatusText(),
+                          style: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.open_in_full,
+                          size: 10,
+                          color: Colors.white54,
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
 
         const SizedBox(height: 8),
