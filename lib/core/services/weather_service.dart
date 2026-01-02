@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:vos_app/core/api/weather_api.dart';
 import 'package:vos_app/core/models/weather_models.dart';
 import 'package:vos_app/core/config/app_config.dart';
+import 'package:vos_app/core/services/auth_service.dart';
 
 class WeatherService {
   late final WeatherApi _weatherApi;
@@ -13,11 +14,19 @@ class WeatherService {
       baseUrl: AppConfig.apiBaseUrl,
     ));
 
-    // Add API key authentication interceptor
+    // JWT authentication only (no API key - security fix)
     _dio.interceptors.add(
       InterceptorsWrapper(
-        onRequest: (options, handler) {
-          options.headers['X-API-Key'] = AppConfig.apiKey;
+        onRequest: (options, handler) async {
+          if (AppConfig.apiBaseUrl.contains('10.0.2.2')) {
+            options.headers['Host'] = 'localhost:8000';
+          }
+          // Add JWT token for authentication
+          final authService = AuthService();
+          final token = await authService.getToken();
+          if (token != null && token.isNotEmpty) {
+            options.headers['Authorization'] = 'Bearer $token';
+          }
           return handler.next(options);
         },
       ),

@@ -37,14 +37,19 @@ class ChatService {
       baseUrl: AppConfig.apiBaseUrl,
     ));
 
-    // Add API key authentication interceptor
+    // Add JWT authentication interceptor (no API key - security fix)
     _dio.interceptors.add(
       InterceptorsWrapper(
-        onRequest: (options, handler) {
-          options.headers['X-API-Key'] = AppConfig.apiKey;
+        onRequest: (options, handler) async {
           // For Android emulator, override Host header to localhost
           if (AppConfig.apiBaseUrl.contains('10.0.2.2')) {
             options.headers['Host'] = 'localhost:8000';
+          }
+          // Add JWT token for authentication
+          final authService = AuthService();
+          final token = await authService.getToken();
+          if (token != null && token.isNotEmpty) {
+            options.headers['Authorization'] = 'Bearer $token';
           }
           return handler.next(options);
         },

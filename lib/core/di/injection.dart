@@ -14,9 +14,11 @@ import 'package:vos_app/core/services/document_service.dart';
 import 'package:vos_app/core/services/call_service.dart';
 import 'package:vos_app/core/managers/voice_manager.dart';
 import 'package:vos_app/core/api/memory_api.dart';
+import 'package:vos_app/core/api/system_prompts_api.dart';
 import 'package:vos_app/features/calendar/bloc/calendar_bloc.dart';
 import 'package:vos_app/features/notes/bloc/notes_bloc.dart';
 import 'package:vos_app/features/settings/bloc/settings_bloc.dart';
+import 'package:vos_app/features/settings/bloc/system_prompts/system_prompts_bloc.dart';
 import 'package:vos_app/features/settings/services/settings_service.dart';
 import 'package:vos_app/features/memory_visualization/bloc/memory_viz_bloc.dart';
 import 'package:vos_app/core/services/auth_service.dart';
@@ -76,26 +78,23 @@ Future<void> configureDependencies() async {
     ),
   );
 
-  // Register Memory API with authentication
+  // Register Memory API with JWT authentication
   final memoryDio = Dio(BaseOptions(
     baseUrl: AppConfig.apiBaseUrl,
     connectTimeout: const Duration(seconds: 30),
     receiveTimeout: const Duration(seconds: 30),
   ));
 
-  // Add authentication interceptor
+  // Add JWT authentication interceptor (no API key - security fix)
   memoryDio.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, handler) async {
-        // Add API key
-        options.headers['X-API-Key'] = AppConfig.apiKey;
-
         // For Android emulator, override Host header to localhost
         if (AppConfig.apiBaseUrl.contains('10.0.2.2')) {
           options.headers['Host'] = 'localhost:8000';
         }
 
-        // Add JWT token if available
+        // Add JWT token for authentication
         final token = await getIt<AuthService>().getToken();
         if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
@@ -113,6 +112,38 @@ Future<void> configureDependencies() async {
   // Register Memory Visualization BLoC
   getIt.registerFactory<MemoryVizBloc>(
     () => MemoryVizBloc(getIt<MemoryApi>()),
+  );
+
+  // Register System Prompts API with JWT authentication
+  final systemPromptsDio = Dio(BaseOptions(
+    baseUrl: AppConfig.apiBaseUrl,
+    connectTimeout: const Duration(seconds: 30),
+    receiveTimeout: const Duration(seconds: 30),
+  ));
+
+  systemPromptsDio.interceptors.add(
+    InterceptorsWrapper(
+      onRequest: (options, handler) async {
+        if (AppConfig.apiBaseUrl.contains('10.0.2.2')) {
+          options.headers['Host'] = 'localhost:8000';
+        }
+        // JWT authentication only (no API key - security fix)
+        final token = await getIt<AuthService>().getToken();
+        if (token != null && token.isNotEmpty) {
+          options.headers['Authorization'] = 'Bearer $token';
+        }
+        return handler.next(options);
+      },
+    ),
+  );
+
+  getIt.registerLazySingleton<SystemPromptsApi>(
+    () => SystemPromptsApi(systemPromptsDio),
+  );
+
+  // Register System Prompts BLoC
+  getIt.registerFactory<SystemPromptsBloc>(
+    () => SystemPromptsBloc(getIt<SystemPromptsApi>()),
   );
 
   getIt.init();

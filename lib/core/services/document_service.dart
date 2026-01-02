@@ -38,15 +38,15 @@ class DocumentService extends ChangeNotifier {
       receiveTimeout: const Duration(seconds: 30),
     ));
 
+    // JWT authentication only (no API key - security fix)
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          options.headers['X-API-Key'] = AppConfig.apiKey;
-
           if (AppConfig.apiBaseUrl.contains('10.0.2.2')) {
             options.headers['Host'] = 'localhost:8000';
           }
 
+          // Add JWT token for authentication
           final authService = getIt<AuthService>();
           final token = await authService.getToken();
           if (token != null && token.isNotEmpty) {

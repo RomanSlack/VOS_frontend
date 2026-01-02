@@ -14,11 +14,11 @@ class AuthService {
   factory AuthService() => _instance;
 
   AuthService._internal() {
-    // Add API key authentication interceptor
+    // Login endpoint is public - no auth needed
+    // Only add emulator host header fix if needed
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
-          options.headers['X-API-Key'] = AppConfig.apiKey;
           // For Android emulator, override Host header to localhost
           if (AppConfig.apiBaseUrl.contains('10.0.2.2')) {
             options.headers['Host'] = 'localhost:8000';

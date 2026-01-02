@@ -8,7 +8,8 @@ class AppConfig {
   static late String voiceApiBaseUrl;
   static late String wsBaseUrl;
   static late String voiceWsBaseUrl;
-  static late String apiKey;
+  // API key removed for security - use JWT authentication instead
+  // static late String apiKey;
   static late bool enableAnalytics;
   static late bool enableCrashlytics;
   static late bool enablePerformance;
@@ -37,7 +38,7 @@ class AppConfig {
     voiceApiBaseUrl = _convertLocalhostForPlatform(envVoiceUrl);
     wsBaseUrl = dotenv.env['WS_BASE_URL'] ?? _deriveWsUrl(apiBaseUrl);
     voiceWsBaseUrl = dotenv.env['VOICE_WS_BASE_URL'] ?? _deriveWsUrl(voiceApiBaseUrl);
-    apiKey = dotenv.env['API_KEY'] ?? 'dev-key-12345';
+    // API key removed - using JWT authentication instead
 
     // Feature Flags
     enableAnalytics = dotenv.env['ENABLE_ANALYTICS']?.toLowerCase() == 'true';

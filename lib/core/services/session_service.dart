@@ -22,11 +22,15 @@ class SessionService {
       baseUrl: AppConfig.apiBaseUrl,
     ));
 
-    // Add API key authentication interceptor
+    // JWT authentication only (no API key - security fix)
     _dio.interceptors.add(
       InterceptorsWrapper(
-        onRequest: (options, handler) {
-          options.headers['X-API-Key'] = AppConfig.apiKey;
+        onRequest: (options, handler) async {
+          if (AppConfig.apiBaseUrl.contains('10.0.2.2')) {
+            options.headers['Host'] = 'localhost:8000';
+          }
+          // Note: Session service calls may happen before login,
+          // so JWT may not always be available
           return handler.next(options);
         },
       ),

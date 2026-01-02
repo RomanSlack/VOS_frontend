@@ -15,14 +15,15 @@ class NotesService {
       receiveTimeout: const Duration(seconds: 30),
     ));
 
-    // Add authentication interceptor
+    // JWT authentication only (no API key - security fix)
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          // Add API key
-          options.headers['X-API-Key'] = AppConfig.apiKey;
+          if (AppConfig.apiBaseUrl.contains('10.0.2.2')) {
+            options.headers['Host'] = 'localhost:8000';
+          }
 
-          // Add JWT token if available
+          // Add JWT token for authentication
           final token = await _authService.getToken();
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
