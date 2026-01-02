@@ -9,6 +9,7 @@ import 'package:vos_app/features/settings/bloc/settings_event.dart';
 import 'package:vos_app/features/settings/bloc/settings_state.dart';
 import 'package:vos_app/features/settings/data/voice_options.dart';
 import 'package:vos_app/features/settings/widgets/voice_selector.dart';
+import 'package:vos_app/features/settings/widgets/system_prompts/system_prompts_section.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -122,6 +123,12 @@ class SettingsView extends StatelessWidget {
                       _buildSectionHeader(theme, 'Voice Settings'),
                       const SizedBox(height: 12),
                       _buildTtsSettingsCard(context, settings),
+                      const SizedBox(height: 24),
+
+                      // System Prompts Section
+                      _buildSectionHeader(theme, 'System Prompts'),
+                      const SizedBox(height: 12),
+                      const SystemPromptsSection(),
                       const SizedBox(height: 24),
 
                       // Reset Button
