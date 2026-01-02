@@ -90,6 +90,10 @@ class _FloatingCallOverlayState extends State<FloatingCallOverlay> {
     await widget.callService.endCall();
   }
 
+  void _interruptAudio() async {
+    await widget.callService.interruptAudio();
+  }
+
   String _formatAgentName(String? agentId) {
     if (agentId == null) return 'VOS';
     final name = agentId.replaceAll('_agent', '').replaceAll('_', ' ');
@@ -282,6 +286,14 @@ class _FloatingCallOverlayState extends State<FloatingCallOverlay> {
               ),
               iconSize: 24,
             ),
+            // Stop audio button (only show when agent is speaking)
+            if (_agentSpeaking)
+              IconButton(
+                onPressed: _interruptAudio,
+                icon: const Icon(Icons.stop_circle_outlined, color: Colors.orange),
+                iconSize: 24,
+                tooltip: 'Stop audio',
+              ),
             // End call button
             Container(
               decoration: const BoxDecoration(
@@ -294,12 +306,13 @@ class _FloatingCallOverlayState extends State<FloatingCallOverlay> {
                 iconSize: 24,
               ),
             ),
-            // Minimize button
-            IconButton(
-              onPressed: () => setState(() => _isExpanded = false),
-              icon: const Icon(Icons.minimize, color: Colors.white70),
-              iconSize: 24,
-            ),
+            // Minimize button (hide when stop button is visible to save space)
+            if (!_agentSpeaking)
+              IconButton(
+                onPressed: () => setState(() => _isExpanded = false),
+                icon: const Icon(Icons.minimize, color: Colors.white70),
+                iconSize: 24,
+              ),
           ],
         ),
       ],

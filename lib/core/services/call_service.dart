@@ -13,6 +13,7 @@ import 'package:vos_app/core/models/call_models.dart';
 import 'package:vos_app/core/config/app_config.dart';
 import 'package:vos_app/core/services/auth_service.dart';
 import 'package:vos_app/core/services/session_service.dart';
+import 'package:vos_app/core/services/audio_player_manager.dart';
 
 /// Call service for voice calls with VOS agents
 ///
@@ -40,8 +41,10 @@ class CallService {
 
   // Audio playback
   final AudioPlayer _player = AudioPlayer();
+  final AudioPlayerManager _audioManager = AudioPlayerManager();
   final List<Uint8List> _audioQueue = [];
   bool _isPlaying = false;
+  static const String _audioSourceId = 'call_audio';
 
   // Keepalive timer
   Timer? _keepaliveTimer;
@@ -52,6 +55,10 @@ class CallService {
   String? _currentSessionId;
   Call? _currentCall;
   CallState _callState = CallState.idle;
+
+  // Audio type tracking for call vs chat audio
+  String _pendingAudioType = 'call_speech';
+  bool _shouldAutoPlayNextAudio = true;
 
   // Stream controllers
   final _callStateController = StreamController<CallState>.broadcast();
@@ -134,6 +141,9 @@ class CallService {
       _connectionStateController.add(true);
       debugPrint('Connected to call WebSocket');
 
+      // Register audio player with global manager
+      _audioManager.register(_audioSourceId, _player);
+
       return true;
     } catch (e) {
       debugPrint('Failed to connect to call WebSocket: $e');
@@ -151,6 +161,9 @@ class CallService {
     _clearAudioQueue();
     await _player.stop();
 
+    // Unregister from global audio manager
+    _audioManager.unregister(_audioSourceId);
+
     await _messageSubscription?.cancel();
     _messageSubscription = null;
 
@@ -163,6 +176,16 @@ class CallService {
     _connectionStateController.add(false);
 
     debugPrint('Disconnected from call WebSocket');
+  }
+
+  /// Interrupt any currently playing call audio.
+  ///
+  /// Call this when the user starts speaking to stop agent audio playback.
+  Future<void> interruptAudio() async {
+    debugPrint('Interrupting call audio');
+    _clearAudioQueue();
+    await _player.stop();
+    _agentSpeakingController.add(false);
   }
 
   void _handleDisconnect() {
@@ -292,11 +315,14 @@ class CallService {
     // Immediate state update for UI responsiveness
     _updateCallState(CallState.ending);
     await stopRecording();
-    
+
+    // Interrupt any playing audio
+    await interruptAudio();
+
     // Clear local state immediately for UX
     _currentCall = null;
     _callController.add(null);
-    _audioQueue.clear(); 
+    _audioQueue.clear();
     _isPlaying = false;
 
     if (_channel == null) {
@@ -440,6 +466,9 @@ class CallService {
         return false;
       }
 
+      // Interrupt any playing audio when user starts speaking
+      await interruptAudio();
+
       final config = RecordConfig(
         encoder: AudioEncoder.pcm16bits,
         sampleRate: 16000,
@@ -527,8 +556,20 @@ class CallService {
     try {
       // Binary data = TTS audio
       if (data is Uint8List) {
-        debugPrint('Received TTS audio: ${data.length} bytes');
-        _playAudio(data);
+        debugPrint('Received TTS audio: ${data.length} bytes (type: $_pendingAudioType, autoPlay: $_shouldAutoPlayNextAudio)');
+
+        // Only auto-play if this is call audio
+        if (_shouldAutoPlayNextAudio && _pendingAudioType == 'call_speech') {
+          _playAudio(data);
+        } else {
+          debugPrint('Skipping auto-play for chat voice audio');
+          // For chat audio, we could emit the audio data for the chat UI to handle
+          // but for now we just skip it in the call context
+        }
+
+        // Reset for next audio
+        _shouldAutoPlayNextAudio = true;
+        _pendingAudioType = 'call_speech';
         return;
       }
 
@@ -564,7 +605,24 @@ class CallService {
           _handleTranscription(json);
           break;
         case 'agent_speaking':
-          _agentSpeakingController.add(true);
+          // Check audio_type to determine how to handle the audio
+          final audioType = json['audio_type'] as String? ?? 'call_speech';
+          final autoPlay = json['auto_play'] as bool? ?? true;
+          final text = json['text'] as String?;
+
+          // Store audio type for the next audio chunk
+          _pendingAudioType = audioType;
+          _shouldAutoPlayNextAudio = autoPlay;
+
+          if (audioType == 'call_speech') {
+            // Call audio - auto-play and show speaking indicator
+            _agentSpeakingController.add(true);
+            debugPrint('📞 Agent speaking (call audio): $text');
+          } else {
+            // Chat voice message - don't auto-play, don't show call speaking indicator
+            // Audio will still be received but not played in call context
+            debugPrint('💬 Agent voice message (chat audio, not auto-playing): $text');
+          }
           break;
         case 'speaking_completed':
           _agentSpeakingController.add(false);
