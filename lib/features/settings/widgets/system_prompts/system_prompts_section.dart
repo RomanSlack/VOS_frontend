@@ -72,6 +72,10 @@ class _SystemPromptsSectionContent extends StatelessWidget {
           loaded = state.updatedState;
         } else if (state is SystemPromptsError && state.previousState != null) {
           loaded = state.previousState;
+        } else if (state is VersionsLoaded) {
+          loaded = state.baseState;
+        } else if (state is PreviewLoaded) {
+          loaded = state.baseState;
         }
 
         if (loaded == null) {
