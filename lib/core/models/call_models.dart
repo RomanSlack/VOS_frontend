@@ -1,5 +1,17 @@
 /// Call-related data models for the VOS call system
 
+/// Helper to parse timestamps that may be missing timezone indicator
+/// Server sends UTC timestamps without 'Z' suffix, causing local time misinterpretation
+DateTime _parseUtcTimestamp(String timestamp) {
+  // If no timezone indicator, assume UTC and append Z
+  if (!timestamp.endsWith('Z') &&
+      !timestamp.contains('+') &&
+      !RegExp(r'-\d{2}:\d{2}$').hasMatch(timestamp)) {
+    return DateTime.parse('${timestamp}Z').toLocal();
+  }
+  return DateTime.parse(timestamp).toLocal();
+}
+
 /// Call state enum matching backend CallStatus
 enum CallState {
   idle,
@@ -88,16 +100,16 @@ class Call {
       initialTarget: json['initial_target'] as String? ?? 'primary_agent',
       currentAgentId: json['current_agent_id'] as String,
       status: _parseCallState(json['status'] as String?),
-      // Convert UTC times to local for proper display
-      startedAt: DateTime.parse(json['started_at'] as String).toLocal(),
+      // Use helper to properly parse UTC timestamps without timezone indicator
+      startedAt: _parseUtcTimestamp(json['started_at'] as String),
       ringingAt: json['ringing_at'] != null
-          ? DateTime.parse(json['ringing_at'] as String).toLocal()
+          ? _parseUtcTimestamp(json['ringing_at'] as String)
           : null,
       connectedAt: json['connected_at'] != null
-          ? DateTime.parse(json['connected_at'] as String).toLocal()
+          ? _parseUtcTimestamp(json['connected_at'] as String)
           : null,
       endedAt: json['ended_at'] != null
-          ? DateTime.parse(json['ended_at'] as String).toLocal()
+          ? _parseUtcTimestamp(json['ended_at'] as String)
           : null,
       endReason: _parseEndReason(json['end_reason'] as String?),
       endedBy: json['ended_by'] as String?,
@@ -235,7 +247,7 @@ class IncomingCallPayload {
       callerAgentId: json['caller_agent_id'] as String? ?? 'primary_agent',
       reason: json['reason'] as String? ?? 'incoming_call',
       timestamp: json['timestamp'] != null
-          ? DateTime.parse(json['timestamp'] as String)
+          ? _parseUtcTimestamp(json['timestamp'] as String)
           : DateTime.now(),
     );
   }
@@ -263,7 +275,7 @@ class CallTranscript {
       speakerId: json['speaker_id'] as String?,
       content: json['content'] as String,
       timestamp: json['timestamp'] != null
-          ? DateTime.parse(json['timestamp'] as String)
+          ? _parseUtcTimestamp(json['timestamp'] as String)
           : DateTime.now(),
       confidence: json['confidence'] as double?,
     );
@@ -309,12 +321,12 @@ class CallHistoryItem {
       initialTarget: json['initial_target'] as String,
       currentAgentId: json['current_agent_id'] as String,
       callStatus: json['call_status'] as String,
-      startedAt: DateTime.parse(json['started_at'] as String).toLocal(),
+      startedAt: _parseUtcTimestamp(json['started_at'] as String),
       connectedAt: json['connected_at'] != null
-          ? DateTime.parse(json['connected_at'] as String).toLocal()
+          ? _parseUtcTimestamp(json['connected_at'] as String)
           : null,
       endedAt: json['ended_at'] != null
-          ? DateTime.parse(json['ended_at'] as String).toLocal()
+          ? _parseUtcTimestamp(json['ended_at'] as String)
           : null,
       endReason: json['end_reason'] as String?,
       durationSeconds: json['duration_seconds'] as int?,
