@@ -60,17 +60,36 @@ class _PhonePageState extends State<PhonePage>
       if (mounted) setState(() => _currentCall = call);
     });
 
-    // Check for existing active call on init and load history
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_callService.isOnCall) {
-        debugPrint('Active call detected');
-        setState(() {
-          _currentCallState = _callService.callState;
-          _currentCall = _callService.currentCall;
-        });
-      }
+    // Connect to call WebSocket to sync state, then load history
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _syncCallState();
       _loadCallHistory();
     });
+  }
+
+  /// Connect to call WebSocket and sync state with backend
+  Future<void> _syncCallState() async {
+    try {
+      final sessionId = await _sessionService.getSessionId();
+
+      // Connect to WebSocket - this will trigger state sync from backend
+      final connected = await _callService.connect(sessionId);
+
+      if (connected && mounted) {
+        // Give a moment for the call_state message to arrive
+        await Future.delayed(const Duration(milliseconds: 300));
+
+        if (_callService.isOnCall) {
+          debugPrint('Active call detected after sync');
+          setState(() {
+            _currentCallState = _callService.callState;
+            _currentCall = _callService.currentCall;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error syncing call state: $e');
+    }
   }
 
   @override
@@ -259,18 +278,24 @@ class _PhonePageState extends State<PhonePage>
           SafeArea(
             child: Column(
               children: [
-                // Minimal header
+                // Minimal header with back button
                 Padding(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Phone',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () => context.go(AppRoutes.home),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Phone',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
 
