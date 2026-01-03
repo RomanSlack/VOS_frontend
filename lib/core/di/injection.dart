@@ -20,6 +20,7 @@ import 'package:vos_app/features/notes/bloc/notes_bloc.dart';
 import 'package:vos_app/features/settings/bloc/settings_bloc.dart';
 import 'package:vos_app/features/settings/bloc/system_prompts/system_prompts_bloc.dart';
 import 'package:vos_app/features/settings/services/settings_service.dart';
+import 'package:vos_app/features/settings/services/agent_voice_service.dart';
 import 'package:vos_app/features/memory_visualization/bloc/memory_viz_bloc.dart';
 import 'package:vos_app/core/services/auth_service.dart';
 import 'package:vos_app/core/config/app_config.dart';
@@ -48,6 +49,11 @@ Future<void> configureDependencies() async {
   // Register call service (depends on AuthService)
   getIt.registerLazySingleton<CallService>(
     () => CallService(getIt<AuthService>()),
+  );
+
+  // Register agent voice service (depends on AuthService)
+  getIt.registerLazySingleton<AgentVoiceService>(
+    () => AgentVoiceService(authService: getIt<AuthService>()),
   );
 
   // Register voice manager (depends on VoiceService, VoiceBatchService, and SettingsService)

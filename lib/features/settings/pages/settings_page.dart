@@ -10,6 +10,7 @@ import 'package:vos_app/features/settings/bloc/settings_state.dart';
 import 'package:vos_app/features/settings/data/voice_options.dart';
 import 'package:vos_app/features/settings/widgets/voice_selector.dart';
 import 'package:vos_app/features/settings/widgets/system_prompts/system_prompts_section.dart';
+import 'package:vos_app/features/settings/widgets/agent_voice_settings.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -123,6 +124,12 @@ class SettingsView extends StatelessWidget {
                       _buildSectionHeader(theme, 'Voice Settings'),
                       const SizedBox(height: 12),
                       _buildTtsSettingsCard(context, settings),
+                      const SizedBox(height: 24),
+
+                      // Agent Voice Settings Section
+                      _buildSectionHeader(theme, 'Agent Voices'),
+                      const SizedBox(height: 12),
+                      const AgentVoiceSettings(),
                       const SizedBox(height: 24),
 
                       // System Prompts Section
