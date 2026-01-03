@@ -87,7 +87,9 @@ class CallService {
   bool get isOnCall =>
       _callState == CallState.connected ||
       _callState == CallState.ringingOutbound ||
-      _callState == CallState.ringingInbound;
+      _callState == CallState.ringingInbound ||
+      _callState == CallState.onHold ||
+      _callState == CallState.transferring;
   bool get isMuted => _isMuted;
 
   CallService(this._authService);
@@ -722,6 +724,7 @@ class CallService {
       content: text,
       timestamp: DateTime.now(),
       confidence: confidence,
+      isFinal: isFinal,
     );
 
     _transcriptController.add(transcript);

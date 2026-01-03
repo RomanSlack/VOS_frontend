@@ -260,6 +260,7 @@ class CallTranscript {
   final String content;
   final DateTime timestamp;
   final double? confidence;
+  final bool isFinal;
 
   CallTranscript({
     required this.speakerType,
@@ -267,6 +268,7 @@ class CallTranscript {
     required this.content,
     required this.timestamp,
     this.confidence,
+    this.isFinal = true,
   });
 
   factory CallTranscript.fromJson(Map<String, dynamic> json) {
@@ -278,6 +280,7 @@ class CallTranscript {
           ? _parseUtcTimestamp(json['timestamp'] as String)
           : DateTime.now(),
       confidence: json['confidence'] as double?,
+      isFinal: json['is_final'] as bool? ?? true,
     );
   }
 

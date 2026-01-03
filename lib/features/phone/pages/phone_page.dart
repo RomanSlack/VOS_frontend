@@ -1,13 +1,15 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import 'package:vos_app/core/models/call_models.dart';
+import 'package:vos_app/core/router/app_routes.dart';
 import 'package:vos_app/core/services/call_service.dart';
 import 'package:vos_app/core/services/session_service.dart';
-import 'package:vos_app/features/phone/widgets/floating_call_overlay.dart';
+import 'package:vos_app/features/phone/widgets/call_timer.dart';
 
 /// Main phone app page with minimalist design
 class PhonePage extends StatefulWidget {
@@ -27,18 +29,23 @@ class _PhonePageState extends State<PhonePage>
   StreamSubscription<CallState>? _callStateSubscription;
   StreamSubscription<String>? _errorSubscription;
   StreamSubscription<IncomingCallPayload>? _incomingCallSubscription;
+  StreamSubscription<Call?>? _callSubscription;
 
   bool _isConnecting = false;
   bool _isLoadingHistory = false;
   List<CallHistoryItem> _callHistory = [];
-  bool _showCallOverlay = false;
   CallState _currentCallState = CallState.idle;
+  Call? _currentCall;
 
   @override
   void initState() {
     super.initState();
     _callService = context.read<CallService>();
     _tabController = TabController(length: 2, vsync: this);
+
+    // Sync initial state from service
+    _currentCallState = _callService.callState;
+    _currentCall = _callService.currentCall;
 
     // Bug 4 fix: Store subscriptions
     _callStateSubscription =
@@ -49,12 +56,18 @@ class _PhonePageState extends State<PhonePage>
       _showError(error);
       if (mounted) setState(() => _isConnecting = false);
     });
+    _callSubscription = _callService.callStream.listen((call) {
+      if (mounted) setState(() => _currentCall = call);
+    });
 
     // Check for existing active call on init and load history
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_callService.isOnCall) {
-        debugPrint('Active call detected, showing call overlay');
-        setState(() => _showCallOverlay = true);
+        debugPrint('Active call detected');
+        setState(() {
+          _currentCallState = _callService.callState;
+          _currentCall = _callService.currentCall;
+        });
       }
       _loadCallHistory();
     });
@@ -66,6 +79,7 @@ class _PhonePageState extends State<PhonePage>
     _callStateSubscription?.cancel();
     _errorSubscription?.cancel();
     _incomingCallSubscription?.cancel();
+    _callSubscription?.cancel();
     _tabController.dispose();
     super.dispose();
   }
@@ -107,20 +121,11 @@ class _PhonePageState extends State<PhonePage>
       setState(() => _isConnecting = false);
     }
 
-    // Bug 3 fix: Show overlay for all active call states including transitional
-    if (state == CallState.connected ||
-        state == CallState.ringingOutbound ||
-        state == CallState.ringingInbound ||
-        state == CallState.onHold ||
-        state == CallState.transferring ||
-        state == CallState.ending) {
-      setState(() => _showCallOverlay = true);
-    } else if (state == CallState.ended || state == CallState.idle) {
-      // Hide overlay when call ends (with small delay for visual feedback)
+    // Refresh history after call ends
+    if (state == CallState.ended || state == CallState.idle) {
       Future.delayed(const Duration(seconds: 1), () {
         if (mounted) {
-          setState(() => _showCallOverlay = false);
-          _loadCallHistory(); // Refresh history after call
+          _loadCallHistory();
         }
       });
     }
@@ -129,10 +134,6 @@ class _PhonePageState extends State<PhonePage>
   void _onIncomingCall(IncomingCallPayload payload) {
     if (!mounted) return;
     _showIncomingCallDialog(payload);
-  }
-
-  void _dismissCallOverlay() {
-    setState(() => _showCallOverlay = false);
   }
 
   Future<void> _initiateCall() async {
@@ -205,7 +206,8 @@ class _PhonePageState extends State<PhonePage>
             onPressed: () {
               _callService.acceptCall(payload.callId);
               Navigator.of(context).pop();
-              setState(() => _showCallOverlay = true);
+              // Navigate to active call page
+              context.go(AppRoutes.activeCall);
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
             child: const Text('Accept'),
@@ -248,7 +250,7 @@ class _PhonePageState extends State<PhonePage>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final isCallActive = _isConnecting || _showCallOverlay;
+    final isCallActive = _isConnecting || _callService.isOnCall;
 
     return Scaffold(
       backgroundColor: isDark ? Colors.black : Colors.grey[50],
@@ -284,7 +286,7 @@ class _PhonePageState extends State<PhonePage>
                         height: 148,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: _showCallOverlay
+                          border: _callService.isOnCall
                               ? Border.all(
                                   color: Colors.green,
                                   width: 4,
@@ -313,52 +315,105 @@ class _PhonePageState extends State<PhonePage>
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        _getStatusText(),
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: _showCallOverlay ? Colors.green : Colors.grey,
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      // Call button
-                      GestureDetector(
-                        onTap: isCallActive ? null : _initiateCall,
-                        child: Container(
-                          width: 72,
-                          height: 72,
-                          decoration: BoxDecoration(
-                            color: isCallActive
-                                ? Colors.grey[400]
-                                : Colors.green,
-                            shape: BoxShape.circle,
-                            boxShadow: isCallActive
-                                ? null
-                                : [
-                                    BoxShadow(
-                                      color: Colors.green.withOpacity(0.3),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
+                      // Show timer if on call
+                      if (_callService.isOnCall && _currentCall?.connectedAt != null)
+                        CallTimer(
+                          startTime: _currentCall!.connectedAt!,
+                          isPaused: _currentCallState == CallState.onHold,
+                          style: TextStyle(
+                            color: Colors.green[400],
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
                           ),
-                          child: _isConnecting
-                              ? const Center(
-                                  child: SizedBox(
-                                    width: 28,
-                                    height: 28,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 3,
-                                    ),
-                                  ),
-                                )
-                              : const Icon(
-                                  Icons.phone,
-                                  color: Colors.white,
-                                  size: 32,
-                                ),
+                        )
+                      else
+                        Text(
+                          _getStatusText(),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: _callService.isOnCall ? Colors.green : Colors.grey,
+                          ),
                         ),
-                      ),
+                      const SizedBox(height: 32),
+                      // Show "Return to Call" button if on call, otherwise show call button
+                      if (_callService.isOnCall)
+                        GestureDetector(
+                          onTap: () => context.go(AppRoutes.activeCall),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 32,
+                              vertical: 16,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.green,
+                              borderRadius: BorderRadius.circular(30),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.green.withOpacity(0.3),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.phone_in_talk,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  'Return to Call',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      else
+                        GestureDetector(
+                          onTap: isCallActive ? null : _initiateCall,
+                          child: Container(
+                            width: 72,
+                            height: 72,
+                            decoration: BoxDecoration(
+                              color: isCallActive
+                                  ? Colors.grey[400]
+                                  : Colors.green,
+                              shape: BoxShape.circle,
+                              boxShadow: isCallActive
+                                  ? null
+                                  : [
+                                      BoxShadow(
+                                        color: Colors.green.withOpacity(0.3),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                            ),
+                            child: _isConnecting
+                                ? const Center(
+                                    child: SizedBox(
+                                      width: 28,
+                                      height: 28,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 3,
+                                      ),
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.phone,
+                                    color: Colors.white,
+                                    size: 32,
+                                  ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -413,12 +468,6 @@ class _PhonePageState extends State<PhonePage>
             ),
           ),
 
-          // Floating call overlay
-          if (_showCallOverlay)
-            FloatingCallOverlay(
-              callService: _callService,
-              onDismiss: _dismissCallOverlay,
-            ),
         ],
       ),
     );

@@ -37,6 +37,8 @@ class _ActiveCallPageState extends State<ActiveCallPage> {
   CallState _callState = CallState.idle;
   Call? _currentCall;
   final List<CallTranscript> _transcripts = [];
+  // Track current interim transcript being built (by speaker type)
+  String? _currentInterimSpeaker;
   bool _agentSpeaking = false;
   bool _isMuted = false;
   bool _isOnHold = false;
@@ -62,7 +64,7 @@ class _ActiveCallPageState extends State<ActiveCallPage> {
       // Close if call ended - go back to phone page
       if (state == CallState.ended || state == CallState.idle) {
         Future.delayed(const Duration(seconds: 1), () {
-          if (mounted) Navigator.of(context).pop();
+          if (mounted) context.go(AppRoutes.phone);
         });
       }
     });
@@ -75,11 +77,7 @@ class _ActiveCallPageState extends State<ActiveCallPage> {
     _transcriptSubscription = _callService.transcriptStream.listen((transcript) {
       if (!mounted) return;
       setState(() {
-        _transcripts.add(transcript);
-        // Keep only last 10 transcripts
-        if (_transcripts.length > 10) {
-          _transcripts.removeAt(0);
-        }
+        _handleTranscript(transcript);
       });
     });
 
@@ -88,6 +86,46 @@ class _ActiveCallPageState extends State<ActiveCallPage> {
       if (!mounted) return;
       setState(() => _agentSpeaking = speaking);
     });
+  }
+
+  /// Handle incoming transcript - consolidate interim messages
+  void _handleTranscript(CallTranscript transcript) {
+    // If this is an interim transcript from the same speaker, update the last message
+    if (!transcript.isFinal && _currentInterimSpeaker == transcript.speakerType) {
+      // Update the last transcript if it exists and is from same speaker
+      if (_transcripts.isNotEmpty &&
+          _transcripts.last.speakerType == transcript.speakerType &&
+          !_transcripts.last.isFinal) {
+        _transcripts[_transcripts.length - 1] = transcript;
+        return;
+      }
+    }
+
+    // If this is a final transcript, clear the interim tracking for this speaker
+    if (transcript.isFinal) {
+      if (_currentInterimSpeaker == transcript.speakerType) {
+        // Replace the last interim with the final version
+        if (_transcripts.isNotEmpty &&
+            _transcripts.last.speakerType == transcript.speakerType &&
+            !_transcripts.last.isFinal) {
+          _transcripts[_transcripts.length - 1] = transcript;
+          _currentInterimSpeaker = null;
+          return;
+        }
+      }
+      _currentInterimSpeaker = null;
+    } else {
+      // Starting a new interim sequence
+      _currentInterimSpeaker = transcript.speakerType;
+    }
+
+    // Add as new transcript
+    _transcripts.add(transcript);
+
+    // Keep only last 10 final transcripts
+    while (_transcripts.length > 10) {
+      _transcripts.removeAt(0);
+    }
   }
 
   @override
@@ -121,7 +159,7 @@ class _ActiveCallPageState extends State<ActiveCallPage> {
     // Just navigate back without ending the call
     // User can return to call from phone page if call is still active
     if (mounted) {
-      Navigator.of(context).pop();
+      context.go(AppRoutes.phone);
     }
   }
 
