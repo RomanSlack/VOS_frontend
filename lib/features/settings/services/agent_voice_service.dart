@@ -2,11 +2,13 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:vos_app/core/config/app_config.dart';
 import 'package:vos_app/core/services/auth_service.dart';
+import 'package:vos_app/core/services/session_service.dart';
 import 'package:vos_app/features/settings/models/agent_voice_model.dart';
 
 /// Service for managing agent voice settings via API
 class AgentVoiceService {
   final AuthService _authService;
+  final SessionService _sessionService = SessionService();
   final String _baseUrl;
 
   AgentVoiceService({
@@ -16,17 +18,17 @@ class AgentVoiceService {
         _baseUrl = baseUrl ?? AppConfig.apiBaseUrl;
 
   /// Get headers with authentication
-  Map<String, String> get _headers {
-    final token = _authService.apiKey;
+  Future<Map<String, String>> _getHeaders() async {
+    final token = await _authService.getToken();
     return {
       'Content-Type': 'application/json',
-      if (token != null) 'X-API-Key': token,
+      if (token != null) 'Authorization': 'Bearer $token',
     };
   }
 
   /// Get user ID (session ID)
-  String get _userId {
-    return _authService.sessionId ?? 'default';
+  Future<String> _getUserId() async {
+    return await _sessionService.getSessionId();
   }
 
   /// Get all default voices for agents
@@ -34,7 +36,7 @@ class AgentVoiceService {
     try {
       final response = await http.get(
         Uri.parse('$_baseUrl/api/v1/agent-voices/defaults'),
-        headers: _headers,
+        headers: await _getHeaders(),
       );
 
       if (response.statusCode == 200) {
@@ -51,9 +53,10 @@ class AgentVoiceService {
   /// Get effective voices for all agents (user preference or default)
   Future<List<AgentVoiceSetting>> getEffectiveVoices() async {
     try {
+      final userId = await _getUserId();
       final response = await http.get(
-        Uri.parse('$_baseUrl/api/v1/agent-voices/effective/$_userId'),
-        headers: _headers,
+        Uri.parse('$_baseUrl/api/v1/agent-voices/effective/$userId'),
+        headers: await _getHeaders(),
       );
 
       if (response.statusCode == 200) {
@@ -70,9 +73,10 @@ class AgentVoiceService {
   /// Get effective voice for a specific agent
   Future<AgentVoiceSetting> getEffectiveVoice(String agentId) async {
     try {
+      final userId = await _getUserId();
       final response = await http.get(
-        Uri.parse('$_baseUrl/api/v1/agent-voices/effective/$_userId/$agentId'),
-        headers: _headers,
+        Uri.parse('$_baseUrl/api/v1/agent-voices/effective/$userId/$agentId'),
+        headers: await _getHeaders(),
       );
 
       if (response.statusCode == 200) {
@@ -93,9 +97,10 @@ class AgentVoiceService {
     String? voiceName,
   }) async {
     try {
+      final userId = await _getUserId();
       final response = await http.put(
-        Uri.parse('$_baseUrl/api/v1/agent-voices/user/$_userId/$agentId'),
-        headers: _headers,
+        Uri.parse('$_baseUrl/api/v1/agent-voices/user/$userId/$agentId'),
+        headers: await _getHeaders(),
         body: json.encode({
           'agent_id': agentId,
           'tts_provider': ttsProvider,
@@ -117,9 +122,10 @@ class AgentVoiceService {
   /// Reset agent voice to default
   Future<void> resetAgentVoice(String agentId) async {
     try {
+      final userId = await _getUserId();
       final response = await http.delete(
-        Uri.parse('$_baseUrl/api/v1/agent-voices/user/$_userId/$agentId'),
-        headers: _headers,
+        Uri.parse('$_baseUrl/api/v1/agent-voices/user/$userId/$agentId'),
+        headers: await _getHeaders(),
       );
 
       if (response.statusCode != 200 && response.statusCode != 404) {
@@ -133,9 +139,10 @@ class AgentVoiceService {
   /// Reset all agent voices to defaults
   Future<void> resetAllVoices() async {
     try {
+      final userId = await _getUserId();
       final response = await http.delete(
-        Uri.parse('$_baseUrl/api/v1/agent-voices/user/$_userId/all'),
-        headers: _headers,
+        Uri.parse('$_baseUrl/api/v1/agent-voices/user/$userId/all'),
+        headers: await _getHeaders(),
       );
 
       if (response.statusCode != 200) {
