@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
 
 import 'package:vos_app/core/models/call_models.dart';
@@ -41,6 +42,11 @@ class _ActiveCallPageState extends State<ActiveCallPage> {
   bool _isMuted = false;
   bool _isOnHold = false;
 
+  // Ringtone
+  final AudioPlayer _ringtonePlayer = AudioPlayer();
+  bool _isRingtoneLoaded = false;
+  DateTime? _ringtoneStartTime;
+
   @override
   void initState() {
     super.initState();
@@ -51,6 +57,14 @@ class _ActiveCallPageState extends State<ActiveCallPage> {
     _currentCall = _callService.currentCall;
     _isMuted = _callService.isMuted;
 
+    // Initialize ringtone
+    _initRingtone();
+
+    // Start ringtone if already in ringing state
+    if (_callState == CallState.ringingOutbound || _callState == CallState.ringingInbound) {
+      _playRingtone();
+    }
+
     // Subscribe to streams
     _callStateSubscription = _callService.callStateStream.listen((state) {
       if (!mounted) return;
@@ -58,6 +72,16 @@ class _ActiveCallPageState extends State<ActiveCallPage> {
         _callState = state;
         _isOnHold = state == CallState.onHold;
       });
+
+      // Handle ringtone
+      debugPrint('🔔 Call state changed to: $state (ringtone loaded: $_isRingtoneLoaded, playing: ${_ringtonePlayer.playing})');
+      if (state == CallState.ringingOutbound || state == CallState.ringingInbound) {
+        debugPrint('🔔 Ringing state - should play ringtone');
+        _playRingtone();
+      } else if (state == CallState.connected || state == CallState.ended || state == CallState.idle) {
+        debugPrint('🔔 Non-ringing state ($state) - stopping ringtone');
+        _stopRingtone();
+      }
 
       // Close if call ended - go back to home
       if (state == CallState.ended || state == CallState.idle) {
@@ -93,12 +117,83 @@ class _ActiveCallPageState extends State<ActiveCallPage> {
     });
   }
 
+  Future<void> _initRingtone() async {
+    try {
+      debugPrint('Loading ringtone asset...');
+      await _ringtonePlayer.setAsset('assets/audio/oppo_calm.mp3');
+      await _ringtonePlayer.setLoopMode(LoopMode.one);
+      await _ringtonePlayer.setVolume(0.0);
+      _isRingtoneLoaded = true;
+      debugPrint('Ringtone loaded successfully');
+
+      // If already in ringing state when ringtone loads, start playing
+      if (_callState == CallState.ringingOutbound || _callState == CallState.ringingInbound) {
+        debugPrint('Already in ringing state, starting ringtone');
+        _playRingtone();
+      }
+    } catch (e) {
+      debugPrint('Failed to load ringtone: $e');
+    }
+  }
+
+  Future<void> _playRingtone() async {
+    if (!_isRingtoneLoaded || _ringtonePlayer.playing) return;
+    try {
+      _ringtoneStartTime = DateTime.now();
+      await _ringtonePlayer.seek(Duration.zero);
+      await _ringtonePlayer.setVolume(0.0);
+      await _ringtonePlayer.play();
+
+      // Fade in
+      for (int i = 0; i <= 10; i++) {
+        await Future.delayed(const Duration(milliseconds: 50));
+        if (_ringtonePlayer.playing) {
+          await _ringtonePlayer.setVolume(i * 0.06);
+        } else {
+          break;
+        }
+      }
+    } catch (e) {
+      debugPrint('Failed to play ringtone: $e');
+    }
+  }
+
+  Future<void> _stopRingtone() async {
+    if (!_isRingtoneLoaded || !_ringtonePlayer.playing) return;
+
+    // Minimum 1.5 seconds before stopping
+    if (_ringtoneStartTime != null) {
+      final elapsed = DateTime.now().difference(_ringtoneStartTime!);
+      if (elapsed.inMilliseconds < 1500) {
+        await Future.delayed(Duration(milliseconds: 1500 - elapsed.inMilliseconds));
+      }
+    }
+
+    try {
+      final currentVolume = _ringtonePlayer.volume;
+      for (int i = 10; i >= 0; i--) {
+        await Future.delayed(const Duration(milliseconds: 30));
+        if (_ringtonePlayer.playing) {
+          await _ringtonePlayer.setVolume(currentVolume * i / 10);
+        } else {
+          break;
+        }
+      }
+      await _ringtonePlayer.pause();
+      await _ringtonePlayer.seek(Duration.zero);
+      _ringtoneStartTime = null;
+    } catch (e) {
+      debugPrint('Failed to stop ringtone: $e');
+    }
+  }
+
   @override
   void dispose() {
     _callStateSubscription?.cancel();
     _callSubscription?.cancel();
     _transcriptSubscription?.cancel();
     _agentSpeakingSubscription?.cancel();
+    _ringtonePlayer.dispose();
     super.dispose();
   }
 

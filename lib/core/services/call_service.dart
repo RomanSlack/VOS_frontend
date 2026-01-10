@@ -633,6 +633,14 @@ class CallService {
             // Call audio - auto-play and show speaking indicator
             _agentSpeakingController.add(true);
             debugPrint('📞 Agent speaking (call audio): $text');
+
+            // Fallback: if still in ringing state but agent is speaking, auto-connect
+            // This handles cases where call_connected message was missed
+            if (_callState == CallState.ringingOutbound || _callState == CallState.ringingInbound) {
+              debugPrint('📞 Auto-connecting: agent speaking but still in ringing state');
+              _updateCallState(CallState.connected);
+              startRecording();
+            }
           } else {
             // Chat voice message - don't auto-play, don't show call speaking indicator
             // Audio will still be received but not played in call context

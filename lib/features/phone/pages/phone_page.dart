@@ -41,6 +41,7 @@ class _PhonePageState extends State<PhonePage>
   // Ringtone player
   final AudioPlayer _ringtonePlayer = AudioPlayer();
   bool _isRingtoneLoaded = false;
+  DateTime? _ringtoneStartTime;
 
   @override
   void initState() {
@@ -73,19 +74,36 @@ class _PhonePageState extends State<PhonePage>
 
   Future<void> _initRingtone() async {
     try {
+      debugPrint('Loading ringtone asset...');
       await _ringtonePlayer.setAsset('assets/audio/oppo_calm.mp3');
       await _ringtonePlayer.setLoopMode(LoopMode.one);
       await _ringtonePlayer.setVolume(0.0); // Start silent for fade-in
       _isRingtoneLoaded = true;
       debugPrint('Ringtone loaded successfully');
+
+      // If we're already in ringing state when ringtone finishes loading, start playing
+      if (_currentCallState == CallState.ringingOutbound ||
+          _currentCallState == CallState.ringingInbound) {
+        debugPrint('Already in ringing state, starting ringtone');
+        _playRingtone();
+      }
     } catch (e) {
       debugPrint('Failed to load ringtone: $e');
     }
   }
 
   Future<void> _playRingtone() async {
-    if (!_isRingtoneLoaded) return;
+    if (!_isRingtoneLoaded) {
+      debugPrint('Ringtone not loaded yet, skipping play');
+      return;
+    }
+    if (_ringtonePlayer.playing) {
+      debugPrint('Ringtone already playing');
+      return;
+    }
     try {
+      debugPrint('Starting ringtone playback');
+      _ringtoneStartTime = DateTime.now();
       await _ringtonePlayer.seek(Duration.zero);
       await _ringtonePlayer.setVolume(0.0);
       await _ringtonePlayer.play();
@@ -99,14 +117,27 @@ class _PhonePageState extends State<PhonePage>
           break;
         }
       }
+      debugPrint('Ringtone fade-in complete');
     } catch (e) {
       debugPrint('Failed to play ringtone: $e');
     }
   }
 
   Future<void> _stopRingtone() async {
-    if (!_isRingtoneLoaded) return;
+    if (!_isRingtoneLoaded || !_ringtonePlayer.playing) return;
+
+    // Ensure minimum 1.5 seconds of ringtone before stopping
+    if (_ringtoneStartTime != null) {
+      final elapsed = DateTime.now().difference(_ringtoneStartTime!);
+      if (elapsed.inMilliseconds < 1500) {
+        final remaining = 1500 - elapsed.inMilliseconds;
+        debugPrint('Ringtone minimum duration not met, waiting ${remaining}ms');
+        await Future.delayed(Duration(milliseconds: remaining));
+      }
+    }
+
     try {
+      debugPrint('Stopping ringtone');
       // Fade out over 300ms
       final currentVolume = _ringtonePlayer.volume;
       for (int i = 10; i >= 0; i--) {
@@ -119,6 +150,7 @@ class _PhonePageState extends State<PhonePage>
       }
       await _ringtonePlayer.pause();
       await _ringtonePlayer.seek(Duration.zero);
+      _ringtoneStartTime = null;
     } catch (e) {
       debugPrint('Failed to stop ringtone: $e');
     }
@@ -173,11 +205,14 @@ class _PhonePageState extends State<PhonePage>
     }
 
     // Handle ringtone for ringing state (outbound and inbound)
+    debugPrint('🔔 Call state changed to: $state (ringtone loaded: $_isRingtoneLoaded, playing: ${_ringtonePlayer.playing})');
     if (state == CallState.ringingOutbound || state == CallState.ringingInbound) {
+      debugPrint('🔔 Ringing state - should play ringtone');
       _playRingtone();
     } else if (state == CallState.connected ||
         state == CallState.ended ||
         state == CallState.idle) {
+      debugPrint('🔔 Non-ringing state ($state) - stopping ringtone');
       _stopRingtone();
     }
 
