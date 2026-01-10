@@ -123,6 +123,7 @@ flutter:
     - assets/images/
     - assets/icons/
     - assets/fonts/
+    - assets/audio/
     - .env
     - .env.dev
     - .env.staging

@@ -1,10 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
 
 import 'package:vos_app/core/models/call_models.dart';
+import 'package:vos_app/core/router/app_routes.dart';
 import 'package:vos_app/core/services/call_service.dart';
 import 'package:vos_app/core/services/session_service.dart';
 import 'package:vos_app/features/phone/widgets/floating_call_overlay.dart';
@@ -35,6 +38,10 @@ class _PhonePageState extends State<PhonePage>
   CallState _currentCallState = CallState.idle;
   bool _fastMode = false; // Fast mode for low-latency responses
 
+  // Ringtone player
+  final AudioPlayer _ringtonePlayer = AudioPlayer();
+  bool _isRingtoneLoaded = false;
+
   @override
   void initState() {
     super.initState();
@@ -51,6 +58,9 @@ class _PhonePageState extends State<PhonePage>
       if (mounted) setState(() => _isConnecting = false);
     });
 
+    // Initialize ringtone player
+    _initRingtone();
+
     // Check for existing active call on init and load history
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_callService.isOnCall) {
@@ -61,6 +71,59 @@ class _PhonePageState extends State<PhonePage>
     });
   }
 
+  Future<void> _initRingtone() async {
+    try {
+      await _ringtonePlayer.setAsset('assets/audio/oppo_calm.mp3');
+      await _ringtonePlayer.setLoopMode(LoopMode.one);
+      await _ringtonePlayer.setVolume(0.0); // Start silent for fade-in
+      _isRingtoneLoaded = true;
+      debugPrint('Ringtone loaded successfully');
+    } catch (e) {
+      debugPrint('Failed to load ringtone: $e');
+    }
+  }
+
+  Future<void> _playRingtone() async {
+    if (!_isRingtoneLoaded) return;
+    try {
+      await _ringtonePlayer.seek(Duration.zero);
+      await _ringtonePlayer.setVolume(0.0);
+      await _ringtonePlayer.play();
+
+      // Fade in over 500ms
+      for (int i = 0; i <= 10; i++) {
+        await Future.delayed(const Duration(milliseconds: 50));
+        if (_ringtonePlayer.playing) {
+          await _ringtonePlayer.setVolume(i * 0.06); // Max 0.6 volume
+        } else {
+          break;
+        }
+      }
+    } catch (e) {
+      debugPrint('Failed to play ringtone: $e');
+    }
+  }
+
+  Future<void> _stopRingtone() async {
+    if (!_isRingtoneLoaded) return;
+    try {
+      // Fade out over 300ms
+      final currentVolume = _ringtonePlayer.volume;
+      for (int i = 10; i >= 0; i--) {
+        await Future.delayed(const Duration(milliseconds: 30));
+        if (_ringtonePlayer.playing) {
+          await _ringtonePlayer.setVolume(currentVolume * i / 10);
+        } else {
+          break;
+        }
+      }
+      await _ringtonePlayer.pause();
+      await _ringtonePlayer.seek(Duration.zero);
+    } catch (e) {
+      debugPrint('Failed to stop ringtone: $e');
+    }
+  }
+
   @override
   void dispose() {
     // Bug 4 fix: Cancel all subscriptions
@@ -68,6 +131,7 @@ class _PhonePageState extends State<PhonePage>
     _errorSubscription?.cancel();
     _incomingCallSubscription?.cancel();
     _tabController.dispose();
+    _ringtonePlayer.dispose();
     super.dispose();
   }
 
@@ -108,6 +172,15 @@ class _PhonePageState extends State<PhonePage>
       setState(() => _isConnecting = false);
     }
 
+    // Handle ringtone for ringing state (outbound and inbound)
+    if (state == CallState.ringingOutbound || state == CallState.ringingInbound) {
+      _playRingtone();
+    } else if (state == CallState.connected ||
+        state == CallState.ended ||
+        state == CallState.idle) {
+      _stopRingtone();
+    }
+
     // Bug 3 fix: Show overlay for all active call states including transitional
     if (state == CallState.connected ||
         state == CallState.ringingOutbound ||
@@ -116,14 +189,16 @@ class _PhonePageState extends State<PhonePage>
         state == CallState.transferring ||
         state == CallState.ending) {
       setState(() => _showCallOverlay = true);
-    } else if (state == CallState.ended || state == CallState.idle) {
-      // Hide overlay when call ends (with small delay for visual feedback)
+    } else if (state == CallState.ended) {
+      // Navigate to home when call ends
       Future.delayed(const Duration(seconds: 1), () {
         if (mounted) {
-          setState(() => _showCallOverlay = false);
-          _loadCallHistory(); // Refresh history after call
+          context.go(AppRoutes.home);
         }
       });
+    } else if (state == CallState.idle) {
+      // Just hide overlay for idle state (no active call)
+      setState(() => _showCallOverlay = false);
     }
   }
 

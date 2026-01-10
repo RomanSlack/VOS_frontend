@@ -192,6 +192,10 @@ class CallService {
     debugPrint('Call WebSocket disconnected');
     _connectionStateController.add(false);
 
+    // Clear the channel so next connect() creates a new one
+    _channel = null;
+    _messageSubscription = null;
+
     // If on hold, don't reconnect - it's intentional
     if (_callState == CallState.onHold) {
       return;
@@ -207,6 +211,10 @@ class CallService {
     debugPrint('Call WebSocket error: $error');
     _errorController.add('Connection error: $error');
     _connectionStateController.add(false);
+
+    // Clear the channel so next connect() creates a new one
+    _channel = null;
+    _messageSubscription = null;
   }
 
   void _scheduleReconnect() {

@@ -59,10 +59,13 @@ class _ActiveCallPageState extends State<ActiveCallPage> {
         _isOnHold = state == CallState.onHold;
       });
 
-      // Close if call ended - go back to phone page
+      // Close if call ended - go back to home
       if (state == CallState.ended || state == CallState.idle) {
         Future.delayed(const Duration(seconds: 1), () {
-          if (mounted) Navigator.of(context).pop();
+          if (mounted) {
+            // Navigate to home after call ends
+            context.go(AppRoutes.home);
+          }
         });
       }
     });
