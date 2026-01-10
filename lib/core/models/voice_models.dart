@@ -231,11 +231,11 @@ class AgentThinkingPayload {
 class SpeakingStartedPayload {
   final String text;
   @JsonKey(name: 'estimated_duration_ms')
-  final int estimatedDurationMs;
+  final int? estimatedDurationMs;
 
   const SpeakingStartedPayload({
     required this.text,
-    required this.estimatedDurationMs,
+    this.estimatedDurationMs,
   });
 
   factory SpeakingStartedPayload.fromJson(Map<String, dynamic> json) =>

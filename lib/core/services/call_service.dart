@@ -233,7 +233,13 @@ class CallService {
   // ===========================================================================
 
   /// Initiate a call to an agent
-  Future<bool> initiateCall({String targetAgent = 'primary_agent'}) async {
+  ///
+  /// [targetAgent] - The agent to call (default: primary_agent)
+  /// [fastMode] - Enable fast mode for low-latency responses with limited tools
+  Future<bool> initiateCall({
+    String targetAgent = 'primary_agent',
+    bool fastMode = false,
+  }) async {
     if (_channel == null) {
       debugPrint('Not connected to WebSocket');
       _errorController.add('Not connected to server');
@@ -246,7 +252,7 @@ class CallService {
       await endCall();
       // Give it a moment to reset
       await Future.delayed(const Duration(milliseconds: 200));
-      
+
       if (_callState != CallState.idle && _callState != CallState.ended) {
          debugPrint('Still in call state after cleanup. Cannot initiate.');
          _errorController.add('Already in a call');
@@ -258,14 +264,15 @@ class CallService {
       // Clear any previous call state to be safe
       _currentCall = null;
       _callController.add(null);
-      
+
       _sendMessage({
         'type': 'initiate_call',
         'target_agent': targetAgent,
+        'fast_mode': fastMode,
       });
 
       _updateCallState(CallState.ringingOutbound);
-      debugPrint('Initiating call to $targetAgent');
+      debugPrint('Initiating call to $targetAgent (fast_mode: $fastMode)');
 
       return true;
     } catch (e) {

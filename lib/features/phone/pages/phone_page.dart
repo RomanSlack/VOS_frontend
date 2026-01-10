@@ -33,6 +33,7 @@ class _PhonePageState extends State<PhonePage>
   List<CallHistoryItem> _callHistory = [];
   bool _showCallOverlay = false;
   CallState _currentCallState = CallState.idle;
+  bool _fastMode = false; // Fast mode for low-latency responses
 
   @override
   void initState() {
@@ -148,7 +149,7 @@ class _PhonePageState extends State<PhonePage>
         return;
       }
 
-      final success = await _callService.initiateCall();
+      final success = await _callService.initiateCall(fastMode: _fastMode);
       if (!success) {
         setState(() => _isConnecting = false);
       }
@@ -357,6 +358,57 @@ class _PhonePageState extends State<PhonePage>
                                   color: Colors.white,
                                   size: 32,
                                 ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Fast mode toggle
+                      GestureDetector(
+                        onTap: isCallActive
+                            ? null
+                            : () => setState(() => _fastMode = !_fastMode),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _fastMode
+                                ? Colors.amber.withOpacity(0.2)
+                                : (isDark ? Colors.grey[800] : Colors.grey[200]),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: _fastMode
+                                  ? Colors.amber
+                                  : Colors.transparent,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.bolt,
+                                size: 18,
+                                color: _fastMode
+                                    ? Colors.amber
+                                    : (isDark ? Colors.grey[400] : Colors.grey[600]),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Fast Mode',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: _fastMode
+                                      ? FontWeight.w600
+                                      : FontWeight.w500,
+                                  color: _fastMode
+                                      ? Colors.amber[700]
+                                      : (isDark ? Colors.grey[400] : Colors.grey[600]),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
